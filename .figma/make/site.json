@@ -1,0 +1,11 @@
+{
+  "title": "BookIn - Hệ thống đặt phòng",
+  "description": "BookIn helps students and lecturers find and book suitable study or meeting rooms, while administrators manage rooms, approvals, and occupancy reports.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

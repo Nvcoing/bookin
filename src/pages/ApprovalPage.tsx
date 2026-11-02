@@ -1,0 +1,22 @@
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "../api/client";
+import { EmptyState, ErrorState, LoadingState, PageHeader, StatusBadge, useToast } from "../components/ui";
+import { useAuth } from "../hooks/useAuth";
+import type { Booking } from "../types";
+
+export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError } = useQuery({ queryKey: ["bookings"], queryFn: api.bookings });
+  const [rejecting, setRejecting] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState("");
+  const { showToast, toastNode } = useToast();
+  const mutation = useMutation({ mutationFn: ({ id, status, rejectionReason }: { id: string; status: Booking["status"]; rejectionReason?: string }) => api.updateBooking(id, status, rejectionReason), onSuccess: (_, values) => { queryClient.invalidateQueries({ queryKey: ["bookings"] }); setRejecting(null); setReason(""); showToast(values.status === "approved" ? "Đã duyệt yêu cầu." : values.status === "cancelled" ? "Đã hủy đơn." : "Đã từ chối yêu cầu."); } });
+  const reject = (id: string) => { if (!reason.trim()) { setReasonError("Bắt buộc nhập lý do từ chối."); return; } mutation.mutate({ id, status: "rejected", rejectionReason: reason }); };
+  const rows = (data || []).filter((item) => admin ? item.status === "pending" : item.requester === user?.name || item.requester === "Lê Thu Hà").sort((a, b) => Number(b.requesterRole === "lecturer") - Number(a.requesterRole === "lecturer"));
+  return <><PageHeader module="Module 4" title={admin ? "Phê duyệt yêu cầu" : "Lịch sử đặt phòng"} description={admin ? "Xử lý đơn theo thứ tự ưu tiên nghiệp vụ." : "Theo dõi trạng thái và quản lý đơn của bạn."} />
+    {admin && <div className="queue-summary"><div><span>Đang chờ xử lý</span><strong>{rows.length}</strong></div><div><span>Đơn ưu tiên</span><strong>{rows.filter((item) => item.requesterRole === "lecturer").length}</strong></div><p>Đơn giảng viên hoặc phục vụ giảng dạy được xếp trước.</p></div>}
+    <section className="panel table-panel"><div className="panel-heading"><div><h2>{admin ? "Hàng đợi chờ duyệt" : "Danh sách đơn"}</h2><p>{admin ? "Kiểm tra nội dung trước khi đưa ra quyết định." : "Các đơn gần đây của tài khoản hiện tại."}</p></div></div>{isLoading ? <LoadingState /> : isError ? <ErrorState /> : !rows.length ? <EmptyState /> : <div className="table-wrap"><table><thead><tr><th>Mã đơn</th>{admin && <th>Người yêu cầu</th>}<th>Phòng</th><th>Thời gian</th><th>Mục đích</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{rows.map((item) => <tr key={item.id}><td data-label="Mã đơn"><strong>{item.id}</strong>{admin && item.requesterRole === "lecturer" && <span className="priority">Ưu tiên</span>}</td>{admin && <td data-label="Người yêu cầu">{item.requester}<small>{item.requesterRole === "lecturer" ? "Giảng viên" : "Sinh viên"}</small></td>}<td data-label="Phòng"><strong>{item.room}</strong></td><td data-label="Thời gian">{item.date}<small>{item.start}–{item.end}</small></td><td data-label="Mục đích">{item.purpose}</td><td data-label="Trạng thái"><StatusBadge status={item.status} />{item.rejectionReason && <small className="reason">Lý do: {item.rejectionReason}</small>}</td><td data-label="Thao tác">{admin ? <div className="table-actions"><button className="button small" onClick={() => mutation.mutate({ id: item.id, status: "approved" })}>Duyệt</button><button className="button small danger-outline" onClick={() => setRejecting(item.id)}>Từ chối</button></div> : <button className="button small danger-outline" disabled={item.status === "cancelled" || item.status === "rejected"} onClick={() => mutation.mutate({ id: item.id, status: "cancelled" })}>Hủy đơn</button>}{rejecting === item.id && <div className="inline-reject"><textarea placeholder="Nhập lý do từ chối..." value={reason} onChange={(e) => { setReason(e.target.value); setReasonError(""); }} />{reasonError && <small className="field-error">{reasonError}</small>}<div><button className="link-button" onClick={() => setRejecting(null)}>Bỏ qua</button><button className="button small danger-button" onClick={() => reject(item.id)}>Xác nhận</button></div></div>}</td></tr>)}</tbody></table></div>}</section>{toastNode}</>;
+}
