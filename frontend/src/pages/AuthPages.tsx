@@ -5,22 +5,22 @@ import { useAuth } from "../hooks/useAuth";
 import { Field } from "../components/ui";
 
 export function LoginPage() {
-  const [email, setEmail] = useState("admin@roombook.test");
-  const [password, setPassword] = useState("Admin@123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError("");
-    if (!email.includes("@") || password.length < 6) { setError("Email hoặc mật khẩu chưa hợp lệ."); return; }
+    if (!email.includes("@") || password.length < 6) { setError("Vui lòng nhập email và mật khẩu hợp lệ (tối thiểu 6 ký tự)."); return; }
     setLoading(true);
     try { const result = await api.login(email, password); signIn(result.token, result.user); navigate(result.user.role === "admin" ? "/bao-cao" : "/phong"); }
     catch (err) { setError(err instanceof ApiError ? err.message : "Đăng nhập không thành công."); }
     finally { setLoading(false); }
   };
   return <div className="auth-page"><section className="auth-intro"><div className="brand large"><span className="brand-mark">BI</span><div><strong>BookIn</strong><small>Hệ thống đặt phòng</small></div></div><div><span className="eyebrow">TRƯỜNG ĐẠI HỌC</span><h1>Quản lý không gian học tập hiệu quả.</h1><p>Đặt phòng học, phòng họp và theo dõi yêu cầu trong một hệ thống thống nhất.</p></div><small>Phòng Quản trị thiết bị · Phiên bản 1.0</small></section>
-    <main className="auth-panel"><form className="auth-form" onSubmit={submit}><div><span className="module-label">Module 1</span><h2>Đăng nhập</h2><p>Sử dụng tài khoản trường để tiếp tục.</p></div>{error && <div className="alert danger">{error}</div>}<Field label="Email trường" required><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field><Field label="Mật khẩu" required><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field><button className="button primary full" disabled={loading}>{loading ? "Đang xác thực..." : "Đăng nhập"}</button><div className="demo-box"><strong>Tài khoản dùng thử</strong><button type="button" onClick={() => { setEmail("admin@roombook.test"); setPassword("Admin@123"); }}>Quản trị viên</button><button type="button" onClick={() => { setEmail("lecturer@roombook.test"); setPassword("Lecturer@123"); }}>Giảng viên</button><button type="button" onClick={() => { setEmail("student@roombook.test"); setPassword("Student@123"); }}>Sinh viên</button></div><p className="auth-link">Chưa có tài khoản? <Link to="/dang-ky">Đăng ký</Link></p></form></main></div>;
+    <main className="auth-panel"><form className="auth-form" onSubmit={submit}><div><span className="module-label">Module 1</span><h2>Đăng nhập</h2><p>Sử dụng tài khoản trường để tiếp tục.</p></div>{error && <div className="alert danger">{error}</div>}<Field label="Email trường" required><input type="email" placeholder="email@school.edu.vn" value={email} onChange={(e) => setEmail(e.target.value)} /></Field><Field label="Mật khẩu" required><input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} /></Field><button className="button primary full" disabled={loading}>{loading ? "Đang xác thực..." : "Đăng nhập"}</button><p className="auth-link">Chưa có tài khoản? <Link to="/dang-ky">Đăng ký tài khoản</Link></p></form></main></div>;
 }
 
 export function RegisterPage() {
