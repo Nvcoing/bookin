@@ -7,7 +7,10 @@ from app.database import Base, engine
 from app.errors import register_exception_handlers
 from app.routers import approval, auth, bookings, reports, rooms, users
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception:
+    pass
 
 app = FastAPI(title="RoomBook API", version="0.1.0")
 
