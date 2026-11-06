@@ -10,7 +10,7 @@ class BookingRequest(BaseModel):
     start_time: AwareDatetime
     end_time: AwareDatetime
     attendee_count: int = Field(ge=1, le=5000)
-    purpose: str = Field(min_length=1, max_length=500)
+    purpose: str = Field(default="Đặt phòng", min_length=1, max_length=500)
     required_facilities: list[Facility] = []
     temp_special_needs: list[SpecialNeed] = []
 
