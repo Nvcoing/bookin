@@ -73,7 +73,17 @@ export interface OccupancyReport {
   items: OccupancyItem[];
 }
 
+export interface HourCount {
+  hour: number;
+  count: number;
+}
+
+export interface WeekdayCount {
+  weekday: number;
+  count: number;
+}
+
 export interface PeakHoursReport {
-  by_hour: Record<string, number>;
-  by_weekday: Record<string, number>;
+  by_hour: HourCount[];
+  by_weekday: WeekdayCount[];
 }

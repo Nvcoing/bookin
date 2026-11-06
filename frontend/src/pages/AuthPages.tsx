@@ -73,7 +73,7 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </Field>
-          <button className="button primary full" disabled={loading}>
+          <button type="submit" className="button primary full" disabled={loading}>
             {loading ? "Đang xác thực..." : "Đăng nhập"}
           </button>
           <p className="auth-link">
@@ -186,7 +186,7 @@ export function RegisterPage() {
             <Link className="button secondary" to="/dang-nhap">
               Quay lại đăng nhập
             </Link>
-            <button className="button primary" disabled={loading}>
+            <button type="submit" className="button primary" disabled={loading}>
               {loading ? "Đang xử lý..." : "Tạo tài khoản"}
             </button>
           </div>

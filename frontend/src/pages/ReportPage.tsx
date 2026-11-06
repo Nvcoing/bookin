@@ -22,22 +22,36 @@ export default function ReportPage() {
 
   const summary = data?.summary || { total: 0, by_status: {} };
   const occupancy = data?.occupancy || { overall_occupancy_rate: 0, items: [] };
-  const peak = data?.peak || { by_hour: {}, by_weekday: {} };
+  const peak = data?.peak || { by_hour: [], by_weekday: [] };
+
+  const hourMap: Record<number, number> = {};
+  if (Array.isArray(peak.by_hour)) {
+    peak.by_hour.forEach((item) => {
+      hourMap[item.hour] = item.count;
+    });
+  }
+
+  const weekdayMap: Record<number, number> = {};
+  if (Array.isArray(peak.by_weekday)) {
+    peak.by_weekday.forEach((item) => {
+      weekdayMap[item.weekday] = item.count;
+    });
+  }
 
   const hoursSlots = [
-    { label: "07–09h", value: (peak.by_hour["7"] || 0) + (peak.by_hour["8"] || 0) },
-    { label: "09–11h", value: (peak.by_hour["9"] || 0) + (peak.by_hour["10"] || 0) },
-    { label: "11–13h", value: (peak.by_hour["11"] || 0) + (peak.by_hour["12"] || 0) },
-    { label: "13–15h", value: (peak.by_hour["13"] || 0) + (peak.by_hour["14"] || 0) },
-    { label: "15–17h", value: (peak.by_hour["15"] || 0) + (peak.by_hour["16"] || 0) },
-    { label: "17–19h", value: (peak.by_hour["17"] || 0) + (peak.by_hour["18"] || 0) },
-    { label: "19–21h", value: (peak.by_hour["19"] || 0) + (peak.by_hour["20"] || 0) },
+    { label: "07–09h", value: (hourMap[7] || 0) + (hourMap[8] || 0) },
+    { label: "09–11h", value: (hourMap[9] || 0) + (hourMap[10] || 0) },
+    { label: "11–13h", value: (hourMap[11] || 0) + (hourMap[12] || 0) },
+    { label: "13–15h", value: (hourMap[13] || 0) + (hourMap[14] || 0) },
+    { label: "15–17h", value: (hourMap[15] || 0) + (hourMap[16] || 0) },
+    { label: "17–19h", value: (hourMap[17] || 0) + (hourMap[18] || 0) },
+    { label: "19–21h", value: (hourMap[19] || 0) + (hourMap[20] || 0) },
   ];
   const maxHourValue = Math.max(...hoursSlots.map((h) => h.value), 1);
 
-  const weekdaySlots = ["1", "2", "3", "4", "5", "6", "7"].map((key) => ({
-    label: WEEKDAY_NAMES[key],
-    value: peak.by_weekday[key] || 0,
+  const weekdaySlots = [1, 2, 3, 4, 5, 6, 7].map((key) => ({
+    label: WEEKDAY_NAMES[String(key)] || `Thứ ${key + 1}`,
+    value: weekdayMap[key] || 0,
   }));
   const maxWeekdayValue = Math.max(...weekdaySlots.map((w) => w.value), 1);
 
