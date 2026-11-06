@@ -44,7 +44,7 @@ export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
   return (
     <>
       <PageHeader
-        module="Module 4"
+        tag={admin ? "Quản lý điều phối" : "Lịch sử cá nhân"}
         title={admin ? "Phê duyệt yêu cầu" : "Lịch sử đặt phòng"}
         description={admin ? "Xử lý đơn theo thứ tự ưu tiên: Giảng viên trước, sau đó đến thứ tự nộp đơn." : "Theo dõi trạng thái và quản lý đơn đặt phòng của bạn."}
       />

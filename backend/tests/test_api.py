@@ -87,7 +87,12 @@ def payload(room_id, days=3, hour=9, hours=2, attendees=10, **extra):
 
 
 def test_auth_flow(client):
-    body = {"email": "new@school.edu.vn", "password": "Matkhau@123",
+    invalid = client.post("/api/auth/register", json={
+        "email": "test@gmail.com", "password": "Matkhau@123", "full_name": "Test"
+    })
+    assert invalid.status_code == 400 and invalid.json()["code"] == "INVALID_EMAIL_DOMAIN"
+
+    body = {"email": "new@vnu.edu.vn", "password": "Matkhau@123",
             "full_name": "New", "special_needs": ["wheelchair"]}
     r = client.post("/api/auth/register", json=body)
     assert r.status_code == 201 and r.json()["role"] == "student"
@@ -95,14 +100,13 @@ def test_auth_flow(client):
     dup = client.post("/api/auth/register", json=body)
     assert dup.status_code == 409 and dup.json()["code"] == "EMAIL_EXISTS"
 
-    bad = client.post("/api/auth/login", data={"username": "new@school.edu.vn", "password": "sai"})
+    bad = client.post("/api/auth/login", data={"username": "new@vnu.edu.vn", "password": "sai"})
     assert bad.status_code == 401 and bad.json()["code"] == "INVALID_CREDENTIALS"
 
-    me = client.get("/api/users/me", headers=login(client, "new@school.edu.vn")
-                    if False else {"Authorization": "Bearer " + client.post(
-                        "/api/auth/login",
-                        data={"username": "new@school.edu.vn", "password": "Matkhau@123"},
-                    ).json()["access_token"]})
+    me = client.get("/api/users/me", headers={"Authorization": "Bearer " + client.post(
+        "/api/auth/login",
+        data={"username": "new@vnu.edu.vn", "password": "Matkhau@123"},
+    ).json()["access_token"]})
     assert me.status_code == 200 and me.json()["special_needs"] == ["wheelchair"]
     assert client.get("/api/users/me").status_code == 401
 

@@ -16,7 +16,9 @@ router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 @router.post("/register", response_model=RegisterOut, status_code=201)
 def register(data: UserCreate, db: Session = Depends(get_db)):
-    email = data.email.lower()
+    email = data.email.lower().strip()
+    if not email.endswith("@vnu.edu.vn"):
+        raise AppError(400, "INVALID_EMAIL_DOMAIN", "Email đăng ký phải thuộc tên miền @vnu.edu.vn (VNU-IS).")
     if db.scalar(select(User).where(User.email == email)):
         raise AppError(409, "EMAIL_EXISTS", "Email này đã được đăng ký.")
 

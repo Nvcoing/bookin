@@ -48,7 +48,7 @@ export default function RoomsPage() {
   return (
     <>
       <PageHeader
-        module="Module 2"
+        tag="Cơ sở vật chất"
         title={user?.role === "admin" ? "Quản lý phòng" : "Danh mục phòng"}
         description="Tra cứu không gian, sức chứa và trạng thái vận hành."
         actions={

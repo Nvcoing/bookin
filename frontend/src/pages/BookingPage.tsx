@@ -111,7 +111,7 @@ export default function BookingPage() {
 
   return (
     <>
-      <PageHeader module="Module 3" title="Đặt phòng" description="Gửi yêu cầu hoặc nhận gợi ý theo nhu cầu sử dụng." />
+      <PageHeader tag="Đăng ký sử dụng phòng" title="Đặt phòng học & họp" description="Gửi yêu cầu hoặc nhận gợi ý phòng học tối ưu theo nhu cầu sử dụng." />
       <form className="panel booking-form" onSubmit={submit}>
         <div className="section-title">
           <span>01</span>
@@ -226,7 +226,7 @@ export default function BookingPage() {
         <section className="panel table-panel recommendation">
           <div className="panel-heading">
             <div>
-              <span className="module-label">Kết quả xếp hạng</span>
+              <span className="category-tag">Thuật toán xếp hạng</span>
               <h2>Phòng phù hợp nhất</h2>
               <p>Điểm được tính theo thể trạng (/40), thiết bị (/30), sức chứa (/20) và vị trí (/10).</p>
             </div>

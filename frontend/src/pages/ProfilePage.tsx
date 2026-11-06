@@ -18,7 +18,7 @@ export default function ProfilePage() {
     try {
       const updated = await api.updateProfile({
         name: name.trim(),
-        special_needs: injury ? ["leg_injury"] : [],
+        special_needs: user.role !== "admin" && injury ? ["leg_injury"] : [],
       });
       updateUser(updated);
       showToast("Đã cập nhật hồ sơ thành công.");
@@ -30,20 +30,38 @@ export default function ProfilePage() {
   };
 
   const rights = {
-    student: ["Xem danh mục và tình trạng phòng", "Gửi, theo dõi và hủy đơn của bản thân", "Nhận gợi ý phòng theo nhu cầu"],
-    lecturer: ["Toàn bộ quyền của sinh viên", "Đơn giảng dạy được xếp mức ưu tiên", "Đặt phòng phục vụ hoạt động chuyên môn"],
-    admin: ["Quản lý danh mục và trạng thái phòng", "Duyệt hoặc từ chối yêu cầu", "Xem báo cáo sử dụng toàn trường"],
+    student: [
+      "Tra cứu danh mục và tình trạng phòng thời gian thực",
+      "Gửi yêu cầu đặt phòng học/họp theo nhu cầu cá nhân",
+      "Theo dõi tiến trình duyệt và hủy đơn trước giờ bắt đầu",
+      "Nhận gợi ý phòng thông minh dựa trên điều kiện thể trạng",
+    ],
+    lecturer: [
+      "Toàn bộ quyền hạn của Sinh viên",
+      "Đơn đặt phòng giảng dạy/hội thảo được xếp ưu tiên cao nhất",
+      "Được quyền đặt các phòng chuyên dụng và phòng hội nghị",
+    ],
+    admin: [
+      "Quản lý toàn bộ danh mục, trang thiết bị và trạng thái phòng",
+      "Phê duyệt hoặc từ chối các đơn đặt phòng trong toàn trường",
+      "Khai thác báo cáo tỷ lệ lấp đầy, giờ cao điểm và thống kê",
+      "Chuyển trạng thái bảo trì phòng (tự động thông báo đơn hủy)",
+    ],
   }[user.role];
 
   return (
     <>
-      <PageHeader module="Module 1" title="Hồ sơ cá nhân" description="Quản lý thông tin định danh và nhu cầu hỗ trợ." />
+      <PageHeader
+        tag="Hồ sơ tài khoản"
+        title="Thông tin người dùng"
+        description="Quản lý thông tin định danh và quyền hạn sử dụng trong hệ thống."
+      />
       <div className="two-col">
         <form className="panel" onSubmit={save}>
           <div className="panel-heading">
             <div>
-              <h2>Thông tin tài khoản</h2>
-              <p>Cập nhật thông tin hiển thị trên hệ thống.</p>
+              <h2>Thông tin cá nhân</h2>
+              <p>Dữ liệu đồng bộ với cơ sở dữ liệu VNU-IS.</p>
             </div>
           </div>
           <div className="form-grid">
@@ -53,31 +71,46 @@ export default function ProfilePage() {
             <Field label="Mã định danh">
               <input value={user.code} disabled />
             </Field>
-            <Field label="Email trường">
+            <Field label="Email trường (@vnu.edu.vn)">
               <input value={user.email} disabled />
             </Field>
             <Field label="Vai trò">
-              <input value={{ student: "Sinh viên", lecturer: "Giảng viên", admin: "Quản trị viên" }[user.role]} disabled />
+              <input
+                value={{ student: "Sinh viên", lecturer: "Giảng viên", admin: "Quản trị viên" }[user.role]}
+                disabled
+              />
             </Field>
           </div>
-          <label className="check-row boxed">
-            <input type="checkbox" checked={injury} onChange={(e) => setInjury(e.target.checked)} />
-            <span>
-              <strong>Cần ưu tiên phòng tầng thấp</strong>
-              <small>Áp dụng quy tắc an toàn cho người đang chấn thương chân (tầng 1–2 có thang máy).</small>
-            </span>
-          </label>
+
+          {/* BUG-002: Tài khoản quản trị viên (admin) thì không hiển thị chức năng Ưu tiên phòng thấp tầng */}
+          {user.role !== "admin" && (
+            <label className="check-row boxed" style={{ marginTop: 18 }}>
+              <input
+                type="checkbox"
+                checked={injury}
+                onChange={(e) => setInjury(e.target.checked)}
+              />
+              <span>
+                <strong>Cần ưu tiên phòng tầng thấp (Lối đi thuận tiện)</strong>
+                <small>
+                  Áp dụng thuật toán an toàn: ưu tiên gợi ý các phòng tầng 1–2 có thang máy cho người có chấn thương vận động.
+                </small>
+              </span>
+            </label>
+          )}
+
           <div className="button-row end">
             <button className="button primary" disabled={saving}>
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
         </form>
+
         <section className="panel rights">
           <div className="panel-heading">
             <div>
-              <h2>Quyền hạn hiện tại</h2>
-              <p>Phạm vi thao tác theo vai trò.</p>
+              <h2>Quyền hạn hệ thống</h2>
+              <p>Phạm vi tác vụ theo vai trò phân quyền.</p>
             </div>
             <span className="role-badge">{user.role}</span>
           </div>
@@ -87,8 +120,10 @@ export default function ProfilePage() {
             ))}
           </ul>
           <div className="info-box">
-            <strong>Lưu ý phân quyền</strong>
-            <p>Các chức năng ngoài phạm vi sẽ bị chặn. Khi API trả về 403, hệ thống hiển thị thông báo không đủ quyền.</p>
+            <strong>Bảo mật thông tin</strong>
+            <p>
+              Thông tin về nhu cầu sức khỏe và chấn thương được bảo vệ theo tiêu chuẩn riêng tư y tế, chỉ hiển thị với chính chủ tài khoản.
+            </p>
           </div>
         </section>
       </div>
