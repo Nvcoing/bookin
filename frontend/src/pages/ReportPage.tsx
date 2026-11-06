@@ -182,8 +182,8 @@ export default function ReportPage() {
                         occupancyPercent > 70
                           ? "linear-gradient(90deg, #10b981, #059669)"
                           : occupancyPercent > 30
-                          ? "linear-gradient(90deg, #3b82f6, #1d4ed8)"
-                          : "linear-gradient(90deg, #f59e0b, #d97706)",
+                            ? "linear-gradient(90deg, #3b82f6, #1d4ed8)"
+                            : "linear-gradient(90deg, #f59e0b, #d97706)",
                     }}
                   />
                 </div>

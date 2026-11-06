@@ -10,9 +10,9 @@ from app.models import Room, User
 from app.security import hash_password
 
 USERS = [
-    ("admin@roombook.test", "Admin@123", "Quan tri vien", Role.admin, "Phong Dao tao", []),
-    ("lecturer@roombook.test", "Lecturer@123", "Giang vien Mau", Role.lecturer, "CNTT", []),
-    ("test1@school.edu.vn", "Matkhau@123", "Nguyen Van Test", Role.student, "CNTT", ["leg_injury"]),
+    ("admin@vnu.edu.vn", "Admin@123", "Quản trị viên Hệ thống", Role.admin, "Phòng Đào tạo", []),
+    ("lecturer@vnu.edu.vn", "Lecturer@123", "Giảng viên VNU-IS", Role.lecturer, "CNTT", []),
+    ("test1@vnu.edu.vn", "Matkhau@123", "Nguyễn Văn Test", Role.student, "CNTT", ["leg_injury"]),
 ]
 
 ROOMS = [

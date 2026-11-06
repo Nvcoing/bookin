@@ -27,12 +27,12 @@ def at(day_offset: int, hour: int) -> datetime:
 
 # (email, mật khẩu, họ tên, vai trò, khoa, nhu cầu đặc biệt)
 USERS = [
-    ("admin@roombook.test", "Admin@123", "Quản trị viên", Role.admin, "Phòng Đào tạo", []),
-    ("lecturer@roombook.test", "Lecturer@123", "Giảng viên Một", Role.lecturer, "CNTT", []),
-    ("lecturer2@roombook.test", "Lecturer@123", "Giảng viên Hai", Role.lecturer, "Điện tử", []),
-    ("student@roombook.test", "Student@123", "Sinh viên Bình thường", Role.student, "CNTT", []),
-    ("injured@roombook.test", "Student@123", "Sinh viên Chấn thương chân", Role.student, "CNTT", ["leg_injury"]),
-    ("wheelchair@roombook.test", "Student@123", "Sinh viên Xe lăn", Role.student, "Điện tử", ["wheelchair"]),
+    ("admin@vnu.edu.vn", "Admin@123", "Quản trị viên Hệ thống", Role.admin, "Phòng Đào tạo", []),
+    ("lecturer@vnu.edu.vn", "Lecturer@123", "Giảng viên Một", Role.lecturer, "CNTT", []),
+    ("lecturer2@vnu.edu.vn", "Lecturer@123", "Giảng viên Hai", Role.lecturer, "Điện tử", []),
+    ("student@vnu.edu.vn", "Student@123", "Sinh viên Bình thường", Role.student, "CNTT", []),
+    ("injured@vnu.edu.vn", "Student@123", "Sinh viên Chấn thương chân", Role.student, "CNTT", ["leg_injury"]),
+    ("wheelchair@vnu.edu.vn", "Student@123", "Sinh viên Xe lăn", Role.student, "Điện tử", ["wheelchair"]),
 ]
 
 # (mã, tên, tòa, tầng, thang máy, sức chứa, thiết bị, khoa quen thuộc, phòng đặc biệt, trạng thái)

@@ -17,11 +17,11 @@ export default function Layout() {
   const nav =
     user.role === "admin"
       ? [
-          { to: "/phong", label: "Quản lý phòng", short: "Phòng" },
-          { to: "/phe-duyet", label: "Phê duyệt yêu cầu", short: "Phê duyệt" },
-          { to: "/bao-cao", label: "Báo cáo sử dụng", short: "Báo cáo" },
-          { to: "/ho-so", label: "Hồ sơ cá nhân", short: "Hồ sơ" },
-        ]
+        { to: "/phong", label: "Quản lý phòng", short: "Phòng" },
+        { to: "/phe-duyet", label: "Phê duyệt yêu cầu", short: "Phê duyệt" },
+        { to: "/bao-cao", label: "Báo cáo sử dụng", short: "Báo cáo" },
+        { to: "/ho-so", label: "Hồ sơ cá nhân", short: "Hồ sơ" },
+      ]
       : common;
 
   const roleName = { student: "Sinh viên", lecturer: "Giảng viên", admin: "Quản trị viên" }[user.role];
