@@ -164,3 +164,4 @@ Truy cập mục **"Báo cáo & Phân tích"** để theo dõi hiệu suất kh�
   * *Trả lời*: Bạn vui lòng sử dụng tài khoản email sinh viên/cán bộ do ĐHQGHN cấp (ví dụ: `yourname@vnu.edu.vn`) để đăng ký.
 * **Hỏi: Sau khi gửi đơn đặt phòng, bao lâu thì đơn được duyệt?**
   * *Trả lời*: Ban quản lý phòng học sẽ xem xét đơn của bạn trong vòng 24 - 48 giờ. Bạn có thể đăng nhập vào hệ thống bất kỳ lúc nào để theo dõi trực tiếp trạng thái đơn của mình.
+

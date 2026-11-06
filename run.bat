@@ -76,3 +76,4 @@ echo   - Sinh viên:  student@vnu.edu.vn  / Student@123
 echo ==================================================================
 echo [Bạn có thể đóng cửa sổ này, 2 server đang chạy ở 2 cửa sổ riêng]
 pause
+

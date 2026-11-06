@@ -253,3 +253,4 @@ Thư viện `psycopg2` nguyên bản của Python sẽ báo lỗi `invalid conne
 Hệ thống đã giải quyết triệt để tại [`backend/app/config.py`](file:///E:/job/bookin/backend/app/config.py):
 * Chuẩn hoá giao thức: Tự động chuyển `postgres://` hoặc `postgresql://` thành dialect `postgresql+psycopg2://`.
 * Bộ lọc Whitelist tham số `_VALID_LIBPQ_PARAMS`: Chỉ giữ lại các tham số chuẩn của thư viện libpq (`sslmode`, `connect_timeout`, `application_name`, v.v.), tự động bóc tách và loại bỏ các cờ tùy biến của bên thứ ba.
+
