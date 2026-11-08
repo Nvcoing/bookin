@@ -9,7 +9,7 @@ from app.errors import AppError
 from app.models import Booking, Room, User
 from app.schemas import Page
 from app.schemas_approval import AdminBookingOut, RejectRequest
-from app.services.approval import expire_pending, list_pending
+from app.services.approval import expire_pending, list_admin_bookings, list_pending
 from app.services.booking_create import _create_lock
 
 router = APIRouter(prefix="/api/bookings", tags=["Approval"])
@@ -33,6 +33,20 @@ def pending_queue(page: int = Query(1, ge=1),
                   _admin: User = Depends(require_role(Role.admin))):
     expire_pending(db)
     rows, total = list_pending(db, page, size)
+    return Page[AdminBookingOut](
+        items=[AdminBookingOut.model_validate(b) for b in rows],
+        total=total, page=page, size=size,
+    )
+
+
+@router.get("/all", response_model=Page[AdminBookingOut])
+def all_bookings(status: BookingStatus | None = Query(default=None),
+                 page: int = Query(1, ge=1),
+                 size: int = Query(20, ge=1, le=100),
+                 db: Session = Depends(get_db),
+                 _admin: User = Depends(require_role(Role.admin))):
+    expire_pending(db)
+    rows, total = list_admin_bookings(db, status, page, size)
     return Page[AdminBookingOut](
         items=[AdminBookingOut.model_validate(b) for b in rows],
         total=total, page=page, size=size,

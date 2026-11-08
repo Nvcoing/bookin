@@ -52,7 +52,7 @@ export default function BookingPage() {
     try {
       const res = await api.recommend(form.attendees, form.projector, needsAccess, form.date, form.start, form.end);
       setResult(res);
-      if (res.recommendations.length > 0 && form.room === "auto") {
+      if (res.recommendations.length > 0) {
         setForm((prev) => ({ ...prev, room: res.recommendations[0].room.id }));
       }
     } catch (err: any) {
@@ -97,7 +97,9 @@ export default function BookingPage() {
       showToast("Đã gửi yêu cầu đặt phòng. Trạng thái: Chờ duyệt.");
       setTimeout(() => navigate("/don-dat-phong"), 1200);
     } catch (err: any) {
-      if (err instanceof ApiError && err.code === "ROOM_CONFLICT") {
+      if (err instanceof ApiError && err.code === "USER_ALREADY_BOOKED") {
+        showToast(err.message, "danger");
+      } else if (err instanceof ApiError && err.code === "ROOM_CONFLICT") {
         const suggestions = err.details?.suggestions || [];
         setConflict(suggestions);
         showToast(err.message, "danger");
@@ -136,11 +138,15 @@ export default function BookingPage() {
           <Field label="Phòng" error={errors.room}>
             <select value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })}>
               <option value="auto">Tự động gợi ý</option>
-              {rooms.map((room) => (
-                <option key={room.id} value={room.id} disabled={room.status === "maintenance"}>
-                  {room.id} · {room.building} (Tầng {room.floor}, {room.capacity} chỗ)
-                </option>
-              ))}
+              {rooms.map((room) => {
+                const unsuitable = needsAccess && room.floor > 2 && !room.has_elevator;
+                return (
+                  <option key={room.id} value={room.id} disabled={room.status === "maintenance"}>
+                    {room.id} · {room.building} (Tầng {room.floor}, {room.capacity} chỗ)
+                    {unsuitable ? " ⚠️ (Tầng cao không thang máy)" : ""}
+                  </option>
+                );
+              })}
             </select>
           </Field>
           <Field label="Mục đích sử dụng" required error={errors.purpose}>

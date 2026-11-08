@@ -95,3 +95,17 @@ def test_back_to_back_is_not_a_conflict(session_factory):
         second = create_booking(db, users[1], r1,
                                 _criteria(start + timedelta(hours=2)), "next")
     assert second.id is not None
+
+
+def test_same_user_duplicate_booking_raises_user_already_booked(session_factory):
+    start = datetime.now(timezone.utc) + timedelta(days=1)
+    with session_factory() as db:
+        users = db.scalars(select(User)).all()
+        r1 = _room_id(db, "R1")
+        create_booking(db, users[0], r1, _criteria(start), "first booking")
+        with pytest.raises(AppError) as exc:
+            create_booking(db, users[0], r1, _criteria(start), "second booking by same user")
+
+    assert exc.value.status_code == 409
+    assert exc.value.code == "USER_ALREADY_BOOKED"
+    assert "Bạn đã có đơn đặt phòng này" in exc.value.message

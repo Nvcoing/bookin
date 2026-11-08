@@ -28,3 +28,22 @@ def find_busy_room_ids(db: Session, start: datetime, end: datetime,
         .distinct()
     )
     return set(db.scalars(stmt).all())
+
+
+def find_user_overlapping_booking(db: Session, user_id: int, room_id: int,
+                                  start: datetime, end: datetime,
+                                  now: datetime | None = None) -> Booking | None:
+    """Kiểm tra xem chính người dùng này đã có đơn trùng giờ chưa (pending hoặc approved)."""
+    now = now or datetime.now(timezone.utc)
+    stmt = (
+        select(Booking)
+        .where(
+            Booking.user_id == user_id,
+            Booking.room_id == room_id,
+            Booking.start_time < end,
+            Booking.end_time > start,
+            _blocking_clause(now),
+        )
+        .limit(1)
+    )
+    return db.scalar(stmt)

@@ -11,7 +11,7 @@ from app.enums import BookingStatus, Role
 from app.models import Booking, Room, User
 from app.schemas_approval import RejectRequest
 from app.services.approval import (
-    cancel_future_bookings_for_room, expire_pending, list_pending,
+    cancel_future_bookings_for_room, expire_pending, list_admin_bookings, list_pending,
 )
 
 NOW = datetime.now(timezone.utc)
@@ -97,3 +97,20 @@ def test_reject_requires_non_blank_reason():
     with pytest.raises(ValidationError):
         RejectRequest(reason="")
     assert RejectRequest(reason="  Phòng bận  ").reason == "Phòng bận"
+
+
+def test_list_admin_bookings_filters_by_status(db):
+    b_pending = add_booking(db, "s@t.vn", 24, status=BookingStatus.pending)
+    b_approved = add_booking(db, "l@t.vn", 48, status=BookingStatus.approved)
+    b_rejected = add_booking(db, "s@t.vn", 72, status=BookingStatus.rejected)
+
+    pending_rows, pending_total = list_admin_bookings(db, BookingStatus.pending, 1, 10)
+    assert pending_total == 1
+    assert pending_rows[0].id == b_pending.id
+
+    approved_rows, approved_total = list_admin_bookings(db, BookingStatus.approved, 1, 10)
+    assert approved_total == 1
+    assert approved_rows[0].id == b_approved.id
+
+    all_rows, all_total = list_admin_bookings(db, None, 1, 10)
+    assert all_total >= 3

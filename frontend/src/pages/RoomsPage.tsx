@@ -222,6 +222,11 @@ export default function RoomsPage() {
                   value={editing.floor}
                   onChange={(e) => setEditing({ ...editing, floor: Number(e.target.value) })}
                 />
+                {Boolean(editing.rawId) && (
+                  <small style={{ color: "#667085", fontSize: 11, marginTop: 4, display: "block" }}>
+                    Lưu ý: Thay đổi Tòa nhà/Tầng sẽ ảnh hưởng tới phân luồng di chuyển và thuật toán gợi ý phòng.
+                  </small>
+                )}
               </Field>
               <Field label="Sức chứa (người)">
                 <input

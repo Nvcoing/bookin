@@ -8,7 +8,7 @@ from app.config import settings
 from app.enums import BookingStatus
 from app.errors import AppError
 from app.models import Booking, Room
-from app.services.booking import find_busy_room_ids
+from app.services.booking import find_busy_room_ids, find_user_overlapping_booking
 from app.services.needs import get_effective_needs
 from app.services.recommend import process_room_recommendations
 from app.services.scoring import Criteria, calculate_room_score, check_hard_filters
@@ -80,7 +80,17 @@ def create_booking(db: Session, user, room_id: int, criteria: Criteria,
     with _create_lock:
         db.execute(select(Room.id).where(Room.id == room.id).with_for_update())
 
-        if room.id in find_busy_room_ids(db, criteria.start, criteria.end):
+        now = datetime.now(timezone.utc)
+        self_booking = find_user_overlapping_booking(db, user.id, room.id, criteria.start, criteria.end, now)
+        if self_booking:
+            db.rollback()
+            status_text = "đang chờ duyệt" if self_booking.status == BookingStatus.pending else "đã được duyệt"
+            raise AppError(
+                409, "USER_ALREADY_BOOKED",
+                f"Bạn đã có đơn đặt phòng này trong khung giờ đã chọn ({status_text}). Vui lòng kiểm tra mục Đơn đặt phòng."
+            )
+
+        if room.id in find_busy_room_ids(db, criteria.start, criteria.end, now):
             suggestions = build_suggestions(db, user, room, criteria)
             db.rollback()
             raise AppError(409, "ROOM_CONFLICT",

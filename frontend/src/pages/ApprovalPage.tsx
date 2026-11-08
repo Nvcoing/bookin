@@ -8,9 +8,10 @@ import type { Booking } from "../types";
 export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
   const { data = [], isLoading, isError } = useQuery({
-    queryKey: ["bookings", admin],
-    queryFn: () => api.bookings(admin),
+    queryKey: ["bookings", admin, tab],
+    queryFn: () => api.bookings(admin, tab),
   });
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [reason, setReason] = useState("");
@@ -49,23 +50,75 @@ export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
         description={admin ? "Xử lý đơn theo thứ tự ưu tiên: Giảng viên trước, sau đó đến thứ tự nộp đơn." : "Theo dõi trạng thái và quản lý đơn đặt phòng của bạn."}
       />
       {admin && (
-        <div className="queue-summary">
-          <div>
-            <span>Đang chờ xử lý</span>
-            <strong>{rows.length}</strong>
+        <>
+          <div className="button-row" style={{ marginTop: 0, marginBottom: 16 }}>
+            <div className="tab-pill-group">
+              <button
+                type="button"
+                className={`tab-pill ${tab === "pending" ? "active" : ""}`}
+                onClick={() => setTab("pending")}
+              >
+                Chờ duyệt
+              </button>
+              <button
+                type="button"
+                className={`tab-pill ${tab === "approved" ? "active" : ""}`}
+                onClick={() => setTab("approved")}
+              >
+                Đã phê duyệt
+              </button>
+              <button
+                type="button"
+                className={`tab-pill ${tab === "rejected" ? "active" : ""}`}
+                onClick={() => setTab("rejected")}
+              >
+                Đã từ chối
+              </button>
+              <button
+                type="button"
+                className={`tab-pill ${tab === "all" ? "active" : ""}`}
+                onClick={() => setTab("all")}
+              >
+                Tất cả lịch sử
+              </button>
+            </div>
           </div>
-          <div>
-            <span>Đơn ưu tiên</span>
-            <strong>{rows.filter((item) => item.requesterRole === "lecturer").length}</strong>
-          </div>
-          <p>Hệ thống tự động xếp đơn Giảng viên lên đầu hàng đợi.</p>
-        </div>
+          {tab === "pending" && (
+            <div className="queue-summary">
+              <div>
+                <span>Đang chờ xử lý</span>
+                <strong>{rows.length}</strong>
+              </div>
+              <div>
+                <span>Đơn ưu tiên</span>
+                <strong>{rows.filter((item) => item.requesterRole === "lecturer").length}</strong>
+              </div>
+              <p>Hệ thống tự động xếp đơn Giảng viên lên đầu hàng đợi.</p>
+            </div>
+          )}
+        </>
       )}
       <section className="panel table-panel">
         <div className="panel-heading">
           <div>
-            <h2>{admin ? "Hàng đợi chờ duyệt" : "Danh sách đơn của tôi"}</h2>
-            <p>{admin ? "Kiểm tra phòng và nội dung trước khi đưa ra quyết định." : "Các đơn đặt phòng gần đây của bạn."}</p>
+            <h2>
+              {admin
+                ? tab === "pending"
+                  ? "Hàng đợi chờ duyệt"
+                  : tab === "approved"
+                  ? "Lịch sử phòng đã phê duyệt"
+                  : tab === "rejected"
+                  ? "Lịch sử yêu cầu đã từ chối"
+                  : "Toàn bộ lịch sử phê duyệt"
+                : "Danh sách đơn của tôi"}
+            </h2>
+            <p>
+              {admin
+                ? tab === "pending"
+                  ? "Kiểm tra phòng và nội dung trước khi đưa ra quyết định."
+                  : "Theo dõi và tra cứu các đơn đặt phòng theo trạng thái."
+                : "Các đơn đặt phòng gần đây của bạn."}
+            </p>
           </div>
         </div>
         {isLoading ? (
@@ -73,7 +126,19 @@ export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
         ) : isError ? (
           <ErrorState />
         ) : !rows.length ? (
-          <EmptyState text={admin ? "Hiện không có đơn nào đang chờ duyệt." : "Bạn chưa có đơn đặt phòng nào."} />
+          <EmptyState
+            text={
+              admin
+                ? tab === "pending"
+                  ? "Hiện không có đơn nào đang chờ duyệt."
+                  : tab === "approved"
+                  ? "Chưa có đơn nào được phê duyệt."
+                  : tab === "rejected"
+                  ? "Chưa có đơn nào bị từ chối."
+                  : "Chưa có lịch sử đơn đặt phòng nào."
+                : "Bạn chưa có đơn đặt phòng nào."
+            }
+          />
         ) : (
           <div className="table-wrap">
             <table>
@@ -117,14 +182,20 @@ export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
                     </td>
                     <td data-label="Thao tác">
                       {admin ? (
-                        <div className="table-actions">
-                          <button className="button small" onClick={() => mutation.mutate({ id: item.id, status: "approved" })}>
-                            Duyệt
-                          </button>
-                          <button className="button small danger-outline" onClick={() => setRejecting(item.id)}>
-                            Từ chối
-                          </button>
-                        </div>
+                        item.status === "pending" ? (
+                          <div className="table-actions">
+                            <button className="button small" onClick={() => mutation.mutate({ id: item.id, status: "approved" })}>
+                              Duyệt
+                            </button>
+                            <button className="button small danger-outline" onClick={() => setRejecting(item.id)}>
+                              Từ chối
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>
+                            {item.status === "approved" ? "Đã duyệt" : item.status === "rejected" ? "Đã từ chối" : "Đã hủy"}
+                          </span>
+                        )
                       ) : (
                         <button
                           className="button small danger-outline"

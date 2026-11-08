@@ -212,8 +212,19 @@ export const api = {
     }
   },
 
-  async bookings(admin?: boolean): Promise<Booking[]> {
-    const path = admin ? "/bookings/pending?size=100" : "/bookings/me?size=100";
+  async bookings(admin?: boolean, status?: string): Promise<Booking[]> {
+    let path = "";
+    if (admin) {
+      if (!status || status === "pending") {
+        path = "/bookings/pending?size=100";
+      } else if (status === "all") {
+        path = "/bookings/all?size=100";
+      } else {
+        path = `/bookings/all?status=${status}&size=100`;
+      }
+    } else {
+      path = status && status !== "all" ? `/bookings/me?status=${status}&size=100` : "/bookings/me?size=100";
+    }
     const res = await request<{ items: any[]; total: number }>(path);
     return res.items.map((b) => {
       const startDt = new Date(b.start_time);
