@@ -17,8 +17,12 @@ router = APIRouter(prefix="/api/reports", tags=["Reports"])
 def _date_range(
     date_from: date | None = Query(None, alias="from", description="YYYY-MM-DD"),
     date_to: date | None = Query(None, alias="to", description="YYYY-MM-DD"),
+    date_from_alt: date | None = Query(None, alias="date_from", description="YYYY-MM-DD"),
+    date_to_alt: date | None = Query(None, alias="date_to", description="YYYY-MM-DD"),
 ):
-    return report_service.resolve_range(date_from, date_to)
+    d_from = date_from or date_from_alt
+    d_to = date_to or date_to_alt
+    return report_service.resolve_range(d_from, d_to)
 
 
 @router.get("/summary", response_model=SummaryOut)

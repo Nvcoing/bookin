@@ -25,14 +25,14 @@ def at(day_offset: int, hour: int) -> datetime:
     return datetime.combine(d, time(hour), tzinfo=VN).astimezone(timezone.utc)
 
 
-# (email, mật khẩu, họ tên, vai trò, khoa, nhu cầu đặc biệt)
+# (email, mật khẩu, họ tên, vai trò, khoa, nhu cầu đặc biệt, mã định danh)
 USERS = [
-    ("admin@vnu.edu.vn", "Admin@123", "Quản trị viên Hệ thống", Role.admin, "Phòng Đào tạo", []),
-    ("lecturer@vnu.edu.vn", "Lecturer@123", "Giảng viên Một", Role.lecturer, "CNTT", []),
-    ("lecturer2@vnu.edu.vn", "Lecturer@123", "Giảng viên Hai", Role.lecturer, "Điện tử", []),
-    ("student@vnu.edu.vn", "Student@123", "Sinh viên Bình thường", Role.student, "CNTT", []),
-    ("injured@vnu.edu.vn", "Student@123", "Sinh viên Chấn thương chân", Role.student, "CNTT", ["leg_injury"]),
-    ("wheelchair@vnu.edu.vn", "Student@123", "Sinh viên Xe lăn", Role.student, "Điện tử", ["wheelchair"]),
+    ("admin@vnu.edu.vn", "Admin@123", "Quản trị viên Hệ thống", Role.admin, "Phòng Đào tạo", [], "AD001"),
+    ("lecturer@vnu.edu.vn", "Lecturer@123", "Giảng viên Một", Role.lecturer, "CNTT", [], "GV001"),
+    ("lecturer2@vnu.edu.vn", "Lecturer@123", "Giảng viên Hai", Role.lecturer, "Điện tử", [], "GV002"),
+    ("student@vnu.edu.vn", "Student@123", "Sinh viên Bình thường", Role.student, "CNTT", [], "SV22010189"),
+    ("injured@vnu.edu.vn", "Student@123", "Sinh viên Chấn thương chân", Role.student, "CNTT", ["leg_injury"], "SV22010190"),
+    ("wheelchair@vnu.edu.vn", "Student@123", "Sinh viên Xe lăn", Role.student, "Điện tử", ["wheelchair"], "SV22010191"),
 ]
 
 # (mã, tên, tòa, tầng, thang máy, sức chứa, thiết bị, khoa quen thuộc, phòng đặc biệt, trạng thái)
@@ -87,8 +87,8 @@ def main():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
-        for email, pw, name, role, faculty, needs in USERS:
-            db.add(User(email=email, full_name=name, hashed_password=hash_password(pw),
+        for email, pw, name, role, faculty, needs, code in USERS:
+            db.add(User(email=email, full_name=name, student_code=code, hashed_password=hash_password(pw),
                         role=role, faculty=faculty, special_needs=needs))
         for code, name, bld, floor, lift, cap, fac, pref, special, status in ROOMS:
             db.add(Room(code=code, name=name, building=bld, floor=floor, has_elevator=lift,
@@ -113,7 +113,7 @@ def main():
 
     print(f"Da nap: {len(USERS)} tai khoan, {len(ROOMS)} phong, {len(BOOKINGS)} don dat phong.")
     print("Tai khoan:")
-    for email, pw, _name, role, _f, needs in USERS:
+    for email, pw, _name, role, _f, needs, _c in USERS:
         print(f"  {role.value:9} {email:28} {pw:14} {needs or ''}")
 
 

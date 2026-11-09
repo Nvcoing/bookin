@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -22,7 +22,7 @@ def _get_room_or_404(db: Session, room_id: int) -> Room:
 
 
 def _code_taken(db: Session, code: str, exclude_id: int | None = None) -> bool:
-    stmt = select(Room).where(Room.code == code)
+    stmt = select(Room).where(func.upper(Room.code) == code.strip().upper())
     if exclude_id is not None:
         stmt = stmt.where(Room.id != exclude_id)
     return db.scalar(stmt) is not None
@@ -72,7 +72,7 @@ def get_room(room_id: int, db: Session = Depends(get_db),
 @router.post("", response_model=RoomOut, status_code=201)
 def create_room(data: RoomCreate, db: Session = Depends(get_db),
                 _admin: User = Depends(require_role(Role.admin))):
-    code = data.code.strip()
+    code = data.code.strip().upper()
     if _code_taken(db, code):
         raise AppError(409, "ROOM_CODE_EXISTS", "Mã phòng đã tồn tại.")
 
@@ -101,7 +101,7 @@ def update_room(room_id: int, data: RoomUpdate, db: Session = Depends(get_db),
     changes = data.model_dump(exclude_unset=True, mode="json")
 
     if "code" in changes and changes["code"] is not None:
-        changes["code"] = changes["code"].strip()
+        changes["code"] = changes["code"].strip().upper()
         if _code_taken(db, changes["code"], exclude_id=room.id):
             raise AppError(409, "ROOM_CODE_EXISTS", "Mã phòng đã tồn tại.")
     if changes.get("facilities") is not None:

@@ -11,11 +11,11 @@ from app.errors import AppError
 from app.models import Booking, User
 from app.schemas import Page
 from app.schemas_booking import (
-    BookingCreate, BookingOut, BookingRequest, RecommendationItem,
+    BookingCreate, BookingOut, BookingRequest, ExcludedRoom, RecommendationItem,
     RecommendationsOut, RoomBrief, ScoreBreakdown,
 )
 from app.services.booking_create import create_booking
-from app.services.recommend import process_room_recommendations
+from app.services.recommend import process_room_recommendations_with_excluded
 from app.services.scoring import Criteria
 from app.services.approval import expire_pending
 from app.timeutil import ensure_utc, validate_time_range
@@ -47,7 +47,7 @@ def recommendations(data: BookingRequest,
                     db: Session = Depends(get_db),
                     user: User = Depends(get_current_user)):
     criteria = _criteria_from(data)
-    results = process_room_recommendations(db, user, criteria, top_n=3)
+    results, excluded = process_room_recommendations_with_excluded(db, user, criteria, top_n=3)
 
     items = [
         RecommendationItem(
@@ -62,8 +62,17 @@ def recommendations(data: BookingRequest,
         )
         for r in results
     ]
+    excluded_items = [
+        ExcludedRoom(
+            room_id=e["room_id"],
+            code=e["code"],
+            name=e["name"],
+            reasons=e["reasons"],
+        )
+        for e in excluded
+    ]
     message = None if items else "Không có phòng nào phù hợp với yêu cầu trong khung giờ này."
-    return RecommendationsOut(recommendations=items, message=message)
+    return RecommendationsOut(recommendations=items, excluded=excluded_items, message=message)
 
 
 @router.post("", response_model=BookingOut, status_code=201)

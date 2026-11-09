@@ -34,7 +34,7 @@ export default function RoomsPage() {
       data.filter(
         (room) =>
           room.capacity >= Number(filters.capacity) &&
-          (filters.floor === "all" || room.floor === Number(filters.floor)) &&
+          (filters.floor === "all" || (filters.floor === "3" ? room.floor >= 3 : room.floor === Number(filters.floor))) &&
           (filters.facility === "all" || room.facilities.includes(filters.facility))
       ),
     [data, filters]
@@ -43,6 +43,16 @@ export default function RoomsPage() {
   const save = (event: FormEvent) => {
     event.preventDefault();
     if (editing) saveMutation.mutate(editing);
+  };
+
+  const toggleStatus = (room: Room) => {
+    const nextStatus = room.status === "active" ? "maintenance" : "active";
+    if (nextStatus === "maintenance") {
+      if (!window.confirm(`Chuyển ${room.name || room.code} sang trạng thái BẢO TRÌ sẽ tự động HỦY toàn bộ các đơn đặt phòng trong tương lai của phòng này. Bạn có chắc chắn muốn tiếp tục?`)) {
+        return;
+      }
+    }
+    saveMutation.mutate({ ...room, status: nextStatus });
   };
 
   return (
@@ -89,6 +99,7 @@ export default function RoomsPage() {
               <option>Micro</option>
               <option>Điều hòa</option>
               <option>Máy tính</option>
+              <option>Hội nghị trực tuyến</option>
             </select>
           </Field>
         </div>
@@ -152,12 +163,8 @@ export default function RoomsPage() {
                             </button>
                             <button
                               className="link-button"
-                              onClick={() =>
-                                saveMutation.mutate({
-                                  ...room,
-                                  status: room.status === "active" ? "maintenance" : "active",
-                                })
-                              }
+                              disabled={saveMutation.isPending}
+                              onClick={() => toggleStatus(room)}
                             >
                               {room.status === "active" ? "Bảo trì" : "Kích hoạt"}
                             </button>
@@ -218,7 +225,7 @@ export default function RoomsPage() {
               <Field label="Tầng">
                 <input
                   type="number"
-                  min="1"
+                  min="0"
                   value={editing.floor}
                   onChange={(e) => setEditing({ ...editing, floor: Number(e.target.value) })}
                 />
@@ -236,13 +243,14 @@ export default function RoomsPage() {
                   onChange={(e) => setEditing({ ...editing, capacity: Number(e.target.value) })}
                 />
               </Field>
-              <Field label="Thiết bị (phân cách bằng dấu phẩy)">
+              <Field label="Khoa ưu tiên (phân cách dấu phẩy)">
                 <input
-                  value={editing.facilities.join(", ")}
+                  value={(editing.preferred_faculties || []).join(", ")}
+                  placeholder="Ví dụ: CNTT, Điện tử"
                   onChange={(e) =>
                     setEditing({
                       ...editing,
-                      facilities: e.target.value
+                      preferred_faculties: e.target.value
                         .split(",")
                         .map((x) => x.trim())
                         .filter(Boolean),
@@ -260,16 +268,56 @@ export default function RoomsPage() {
                 </select>
               </Field>
             </div>
-            <label className="check-row">
-              <input
-                type="checkbox"
-                checked={editing.has_elevator}
-                onChange={(e) => setEditing({ ...editing, has_elevator: e.target.checked })}
-              />
-              <span>
-                <strong>Tòa nhà có thang máy hoặc lối tiếp cận thuận tiện</strong>
-              </span>
-            </label>
+
+            <div style={{ marginTop: 14 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#344054", display: "block", marginBottom: 6 }}>
+                Trang thiết bị phòng:
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8 }}>
+                {["Máy chiếu", "Bảng trắng", "Micro", "Điều hòa", "Máy tính", "Hội nghị trực tuyến"].map((fac) => {
+                  const checked = editing.facilities.includes(fac);
+                  return (
+                    <label key={fac} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...editing.facilities, fac]
+                            : editing.facilities.filter((f) => f !== fac);
+                          setEditing({ ...editing, facilities: next });
+                        }}
+                      />
+                      <span>{fac}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={editing.has_elevator}
+                  onChange={(e) => setEditing({ ...editing, has_elevator: e.target.checked })}
+                />
+                <span>
+                  <strong>Tòa nhà có thang máy hoặc lối tiếp cận thuận tiện</strong>
+                </span>
+              </label>
+
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editing.is_special)}
+                  onChange={(e) => setEditing({ ...editing, is_special: e.target.checked })}
+                />
+                <span>
+                  <strong>Phòng đặc biệt (Chỉ dành cho Giảng viên hoặc SV có thẩm quyền)</strong>
+                </span>
+              </label>
+            </div>
             <div className="button-row end">
               <button type="button" className="button secondary" onClick={() => setEditing(null)}>
                 Hủy

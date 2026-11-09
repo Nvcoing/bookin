@@ -17,8 +17,14 @@ COUNTED_FOR_PEAK = (BookingStatus.approved, BookingStatus.pending)
 
 def resolve_range(date_from: date | None, date_to: date | None):
     """Trả (date_from, date_to, start_utc, end_utc). end_utc là mốc loại trừ."""
-    date_to = date_to or datetime.now(VN_TZ).date()
-    date_from = date_from or (date_to - timedelta(days=29))
+    if date_from and not date_to:
+        date_to = date_from + timedelta(days=29)
+    elif date_to and not date_from:
+        date_from = date_to - timedelta(days=29)
+    else:
+        date_to = date_to or datetime.now(VN_TZ).date()
+        date_from = date_from or (date_to - timedelta(days=29))
+
     if date_to < date_from:
         raise AppError(400, "INVALID_DATE_RANGE", "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.")
     if (date_to - date_from).days + 1 > MAX_RANGE_DAYS:
@@ -29,12 +35,11 @@ def resolve_range(date_from: date | None, date_to: date | None):
     return date_from, date_to, start, end
 
 
-def summary(db: Session, start: datetime, end: datetime) -> dict:
-    rows = db.execute(
-        select(Booking.status, func.count())
-        .where(Booking.start_time >= start, Booking.start_time < end)
-        .group_by(Booking.status)
-    ).all()
+def summary(db: Session, start: datetime | None = None, end: datetime | None = None) -> dict:
+    stmt = select(Booking.status, func.count()).group_by(Booking.status)
+    if start is not None and end is not None:
+        stmt = stmt.where(Booking.start_time >= start, Booking.start_time < end)
+    rows = db.execute(stmt).all()
     by_status = {s.value: 0 for s in BookingStatus}
     for status, n in rows:
         by_status[getattr(status, "value", status)] = n

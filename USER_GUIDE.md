@@ -37,7 +37,7 @@ flowchart LR
 1. Truy cập liên kết: [https://bookin-vnu-is.vercel.app/dang-nhap](https://bookin-vnu-is.vercel.app/dang-nhap).
 2. Nếu chưa có tài khoản:
    * Bấm vào liên kết **"Chưa có tài khoản? Đăng ký ngay"** (hoặc truy cập trực tiếp `/dang-ky`).
-   * Điền đầy đủ thông tin: Họ và tên, Email VNU-IS (ví dụ: `nguyenvana@vnu.edu.vn`), Mật khẩu (tối thiểu 6 ký tự).
+   * Điền đầy đủ thông tin: Họ và tên, Mã định danh, Email VNU-IS (ví dụ: `nguyenvana@vnu.edu.vn`), Khoa/Viện, Mật khẩu (tối thiểu 8 ký tự).
    * Lựa chọn vai trò: **Sinh viên** hoặc **Giảng viên**.
    * Chọn Khoa trực thuộc (Khoa CNTT & Kinh tế số, Khoa Kinh tế & Quản lý, Khoa Ngôn ngữ ứng dụng, v.v.).
    * Nhấn nút **"Đăng ký tài khoản"**.

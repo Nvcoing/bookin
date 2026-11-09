@@ -6,7 +6,9 @@ import { useAuth } from "../hooks/useAuth";
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const [name, setName] = useState(user?.name || "");
+  const [faculty, setFaculty] = useState(user?.faculty || "CNTT");
   const [injury, setInjury] = useState(user?.special_needs?.includes("leg_injury") || false);
+  const [wheelchair, setWheelchair] = useState(user?.special_needs?.includes("wheelchair") || false);
   const [saving, setSaving] = useState(false);
   const { showToast, toastNode } = useToast();
 
@@ -16,9 +18,15 @@ export default function ProfilePage() {
     event.preventDefault();
     setSaving(true);
     try {
+      const needs: string[] = [];
+      if (user.role !== "admin") {
+        if (injury) needs.push("leg_injury");
+        if (wheelchair) needs.push("wheelchair");
+      }
       const updated = await api.updateProfile({
         name: name.trim(),
-        special_needs: user.role !== "admin" && injury ? ["leg_injury"] : [],
+        faculty: faculty.trim(),
+        special_needs: needs,
       });
       updateUser(updated);
       showToast("Đã cập nhật hồ sơ thành công.");
@@ -71,6 +79,9 @@ export default function ProfilePage() {
             <Field label="Mã định danh">
               <input value={user.code} disabled />
             </Field>
+            <Field label="Khoa / Đơn vị">
+              <input value={faculty} onChange={(e) => setFaculty(e.target.value)} placeholder="Ví dụ: CNTT, Kinh tế..." />
+            </Field>
             <Field label="Email trường (@vnu.edu.vn)">
               <input value={user.email} disabled />
             </Field>
@@ -82,21 +93,37 @@ export default function ProfilePage() {
             </Field>
           </div>
 
-          {/* BUG-002: Tài khoản quản trị viên (admin) thì không hiển thị chức năng Ưu tiên phòng thấp tầng */}
+          {/* BUG-003: Hỗ trợ đầy đủ cả nhu cầu chấn thương chân và xe lăn */}
           {user.role !== "admin" && (
-            <label className="check-row boxed" style={{ marginTop: 18 }}>
-              <input
-                type="checkbox"
-                checked={injury}
-                onChange={(e) => setInjury(e.target.checked)}
-              />
-              <span>
-                <strong>Cần ưu tiên phòng tầng thấp (Lối đi thuận tiện)</strong>
-                <small>
-                  Áp dụng thuật toán an toàn: ưu tiên gợi ý các phòng tầng 1–2 có thang máy cho người có chấn thương vận động.
-                </small>
-              </span>
-            </label>
+            <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+              <label className="check-row boxed">
+                <input
+                  type="checkbox"
+                  checked={injury}
+                  onChange={(e) => setInjury(e.target.checked)}
+                />
+                <span>
+                  <strong>Cần ưu tiên phòng tầng thấp (Chấn thương chân)</strong>
+                  <small>
+                    Áp dụng thuật toán an toàn: ưu tiên gợi ý các phòng tầng 1–2 có thang máy cho người có chấn thương vận động.
+                  </small>
+                </span>
+              </label>
+
+              <label className="check-row boxed">
+                <input
+                  type="checkbox"
+                  checked={wheelchair}
+                  onChange={(e) => setWheelchair(e.target.checked)}
+                />
+                <span>
+                  <strong>Hỗ trợ xe lăn (Yêu cầu tiếp cận thang máy)</strong>
+                  <small>
+                    Bắt buộc chọn các phòng có thang máy hoặc lối tiếp cận thuận tiện cho xe lăn.
+                  </small>
+                </span>
+              </label>
+            </div>
           )}
 
           <div className="button-row end">

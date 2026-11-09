@@ -205,37 +205,36 @@ $$\text{Total Score} = S_{\text{health}} + S_{\text{facilities}} + S_{\text{capa
 Tất cả các API được bảo vệ yêu cầu Header `Authorization: Bearer <access_token>`.
 
 ### 5.1. Xác thực & Tài khoản (`/api/auth`)
-* `POST /api/auth/register`: Đăng ký tài khoản. Bắt buộc `email` có đuôi `@vnu.edu.vn`. Payload gồm `email`, `password`, `full_name`, `role`, `faculty`, `special_needs`.
-* `POST /api/auth/login`: Đăng nhập bằng `username` (email) và `password` (theo chuẩn OAuth2 Password Request Form). Trả về `access_token` và `token_type: "bearer"`.
-* `GET /api/auth/me`: Lấy thông tin phiên làm việc hiện tại của người dùng.
+* `POST /api/auth/register`: Đăng ký tài khoản sinh viên. Bắt buộc `email` có đuôi `@vnu.edu.vn`. Payload gồm `email`, `password` (tối thiểu 8 ký tự), `full_name`, `code` (mã sinh viên), `faculty`, `special_needs`.
+* `POST /api/auth/login`: Đăng nhập bằng `username` (email) và `password` (theo chuẩn OAuth2 Password Request Form). Tích hợp cơ chế Rate Limit chống brute-force (khóa tạm 15 phút sau 5 lần sai). Trả về `access_token` và `token_type: "bearer"`.
 
 ### 5.2. Quản lý Người dùng (`/api/users`)
-* `GET /api/users/profile`: Lấy chi tiết hồ sơ cá nhân.
-* `PUT /api/users/profile`: Cập nhật thông tin khoa, danh sách nhu cầu đặc biệt (`special_needs`).
+* `GET /api/users/me`: Lấy thông tin tài khoản và phân quyền của người dùng hiện tại.
+* `PATCH /api/users/me`: Cập nhật thông tin họ tên, khoa, danh sách nhu cầu đặc biệt (`special_needs`).
+* `GET /api/users`: *(Admin)* Danh sách người dùng hệ thống kèm phân trang và tìm kiếm.
+* `PATCH /api/users/{user_id}`: *(Admin)* Cập nhật vai trò (`role`), cấp quyền phòng đặc biệt (`can_book_special_rooms`) và trạng thái kích hoạt (`is_active`).
 
 ### 5.3. Quản lý Phòng học (`/api/rooms`)
-* `GET /api/rooms`: Danh sách phòng học kèm bộ lọc động (`building`, `floor`, `min_capacity`, `facilities`, `status`).
+* `GET /api/rooms`: Danh sách phòng học kèm bộ lọc động (`building`, `floor_max`, `min_capacity`, `facilities`, `status`).
 * `GET /api/rooms/{id}`: Xem chi tiết một phòng học.
-* `POST /api/rooms`: *(Admin)* Tạo phòng học mới.
-* `PUT /api/rooms/{id}`: *(Admin)* Cập nhật thông tin phòng.
-* `DELETE /api/rooms/{id}`: *(Admin)* Xóa phòng hoặc chuyển trạng thái không hoạt động.
+* `POST /api/rooms`: *(Admin)* Tạo phòng học mới (tự động chuẩn hóa mã phòng IN HOA, hỗ trợ tầng 0, phòng đặc biệt).
+* `PATCH /api/rooms/{id}`: *(Admin)* Cập nhật thông tin phòng, thiết bị, khoa ưu tiên.
+* `PATCH /api/rooms/{id}/status`: *(Admin)* Đổi trạng thái hoạt động/bảo trì (khi chuyển bảo trì sẽ tự động hủy các đơn tương lai và ghi lý do).
 
 ### 5.4. Đặt phòng & Đề xuất (`/api/bookings`)
-* `POST /api/bookings/recommendations`: Gửi yêu cầu tìm kiếm phòng, trả về danh sách các phòng hợp lệ được xếp hạng theo điểm số thông minh và danh sách các phòng bị loại kèm lý do chi tiết.
-* `POST /api/bookings`: Tạo đơn đặt phòng mới. Hệ thống tự động gán hạn duyệt `expires_at = now() + 48h`.
-* `GET /api/bookings/my`: Lấy danh sách lịch sử các đơn đặt phòng của chính người dùng hiện tại.
-* `POST /api/bookings/{id}/cancel`: Người dùng tự hủy đơn đặt phòng của mình (nếu đơn chưa diễn ra).
+* `POST /api/bookings/recommendations`: Gửi yêu cầu tìm kiếm phòng, trả về danh sách các phòng hợp lệ được xếp hạng theo điểm số thông minh (`recommendations`) và danh sách các phòng bị loại kèm lý do chi tiết (`excluded`).
+* `POST /api/bookings`: Tạo đơn đặt phòng mới. Tự động kiểm tra trùng giờ, hạn duyệt 48h, khung giờ hoạt động (07:00 – 21:00) và giới hạn đặt trước tối đa 180 ngày.
+* `GET /api/bookings/me`: Lấy danh sách lịch sử các đơn đặt phòng của chính người dùng hiện tại (hỗ trợ lọc theo `status`).
+* `POST /api/bookings/{id}/cancel`: Người dùng tự hủy đơn đặt phòng của mình (khi đơn chưa diễn ra).
+* `POST /api/bookings/{id}/approve`: *(Admin)* Phê duyệt đơn đặt phòng.
+* `POST /api/bookings/{id}/reject`: *(Admin)* Từ chối đơn và lưu trữ lý do phản hồi cho người đặt.
+* `GET /api/bookings/pending`: *(Admin)* Hàng đợi duyệt ưu tiên (Giảng viên trước, thời gian nộp trước).
+* `GET /api/bookings/all`: *(Admin)* Toàn bộ lịch sử đặt phòng toàn trường.
 
-### 5.5. Hội đồng Phê duyệt (`/api/approval`)
-* `GET /api/approval/queue`: Lấy danh sách hàng đợi các đơn chờ duyệt. Sắp xếp ưu tiên: **Giảng viên lên trước**, sau đó sắp xếp theo thời gian nộp đơn sớm nhất.
-* `POST /api/approval/{id}/approve`: *(Admin)* Phê duyệt đơn đặt phòng. Hệ thống thực hiện kiểm tra xung đột lịch thời gian thực trước khi chốt duyệt.
-* `POST /api/approval/{id}/reject`: *(Admin)* Từ chối đơn và lưu trữ lý do phản hồi cho người đặt.
-
-### 5.6. Báo cáo & Thống kê (`/api/reports`)
-* `GET /api/reports`: Tổng hợp dữ liệu phân tích hệ thống:
-  * `summary`: Thống kê tổng số đơn theo từng trạng thái (`approved`, `pending`, `rejected`, `cancelled`).
-  * `occupancy`: Tỷ lệ lấp đầy tổng thể của toàn trường và tỷ lệ khai thác của từng phòng học (tính trên khung giờ chuẩn 07:00 – 21:00 hàng ngày).
-  * `peak`: Phân bổ tần suất số lượt đặt theo từng khung giờ trong ngày (07h - 21h) và từng thứ trong tuần (Thứ 2 đến Chủ nhật).
+### 5.5. Báo cáo & Thống kê (`/api/reports`)
+* `GET /api/reports/summary`: Thống kê tổng số đơn theo từng trạng thái (`approved`, `pending`, `rejected`, `cancelled`) hỗ trợ lọc theo ngày (`from`, `to`).
+* `GET /api/reports/occupancy`: Tỷ lệ lấp đầy tổng thể của toàn trường và tỷ lệ khai thác của từng phòng học (tính trên khung giờ chuẩn 07:00 – 21:00 hàng ngày).
+* `GET /api/reports/peak-hours`: Phân bổ tần suất số lượt đặt theo từng khung giờ trong ngày (07h - 21h) và từng thứ trong tuần (Thứ 2 đến Chủ nhật).
 
 ---
 

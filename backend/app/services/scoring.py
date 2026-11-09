@@ -33,8 +33,14 @@ def check_hard_filters(room, criteria: Criteria, user, needs: set[str],
         reasons.append("ROOM_BOOKED")
     if room.capacity < criteria.attendee_count:
         reasons.append("CAPACITY_TOO_SMALL")
+    # BUG-004 & BUG-015: Yêu cầu tiếp cận an toàn: tầng <= 2 VÀ có thang máy/lối tiếp cận thuận tiện
     if (needs & MOBILITY) and not (room.floor <= 2 and room.has_elevator):
         reasons.append("ACCESSIBILITY_REQUIRED")
+    # BUG-010: Khi yêu cầu thiết bị bắt buộc, phòng phải có đủ thiết bị đó
+    if criteria.required_facilities:
+        room_facs = set(room.facilities or [])
+        if not criteria.required_facilities.issubset(room_facs):
+            reasons.append("FACILITY_MISSING")
     can_special = _v(user.role) in ("lecturer", "admin") or user.can_book_special_rooms
     if room.is_special and not can_special:
         reasons.append("SPECIAL_ROOM_NOT_ALLOWED")
@@ -44,7 +50,8 @@ def check_hard_filters(room, criteria: Criteria, user, needs: set[str],
 def _health_score(room, needs: set[str]) -> int:
     if not (needs & MOBILITY):
         return W_HEALTH  # không có nhu cầu đặc biệt: điểm mặc định
-    if room.floor == 1:
+    # BUG-004 & BUG-021: Phòng tầng 0 và tầng 1 có thang máy đạt điểm tối đa 40đ (khớp bộ lọc cứng)
+    if room.floor <= 1 and room.has_elevator:
         return W_HEALTH
     if room.floor == 2 and room.has_elevator:
         return W_HEALTH // 2

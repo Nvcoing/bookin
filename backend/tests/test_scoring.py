@@ -46,6 +46,13 @@ def test_wheelchair_rejected_without_elevator():
     assert "ACCESSIBILITY_REQUIRED" in reasons
 
 
+def test_floor_0_with_elevator_health_score():
+    crit = make_criteria()
+    user = make_user()
+    floor0 = calculate_room_score(make_room(floor=0, has_elevator=True), crit, user, {"wheelchair"})
+    assert floor0["health"] == 40
+
+
 def test_wheelchair_ok_on_floor_1_with_elevator():
     room = make_room(floor=1, has_elevator=True)
     assert check_hard_filters(room, make_criteria(), make_user(), {"wheelchair"}) == []

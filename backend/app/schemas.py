@@ -1,6 +1,6 @@
 from typing import Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.enums import Facility, Role, RoomStatus, SpecialNeed
 
@@ -11,13 +11,30 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)
     full_name: str = Field(min_length=1, max_length=255)
-    faculty: str | None = None
+    code: str | None = Field(default=None, max_length=50)
+    faculty: str | None = Field(default=None, max_length=100)
     special_needs: list[SpecialNeed] = []
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("Họ và tên không được để trống.")
+        return stripped
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_bytes(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Mật khẩu không được vượt quá 72 bytes.")
+        return v
 
     model_config = ConfigDict(json_schema_extra={"example": {
         "email": "an.nguyen@school.edu.vn",
         "password": "Matkhau@123",
         "full_name": "Nguyễn Văn An",
+        "code": "22010189",
         "faculty": "CNTT",
         "special_needs": ["leg_injury"],
     }})
@@ -28,6 +45,7 @@ class RegisterOut(BaseModel):
     id: int
     email: str
     full_name: str
+    student_code: str | None = None
     role: Role
 
 
@@ -42,16 +60,32 @@ class UserOut(BaseModel):
     id: int
     email: str
     full_name: str
+    student_code: str | None = None
     role: Role
     faculty: str | None
     special_needs: list[SpecialNeed]
     can_book_special_rooms: bool
+    is_active: bool = True
 
 
 class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
-    faculty: str | None = None
+    student_code: str | None = Field(default=None, max_length=50)
+    faculty: str | None = Field(default=None, max_length=100)
     special_needs: list[SpecialNeed] | None = None
+    can_book_special_rooms: bool | None = None
+    role: Role | None = None
+    is_active: bool | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str | None) -> str | None:
+        if v is not None:
+            stripped = v.strip()
+            if not stripped:
+                raise ValueError("Họ và tên không được để trống.")
+            return stripped
+        return v
 
 class Page(BaseModel, Generic[T]):
     items: list[T]

@@ -15,10 +15,25 @@ const WEEKDAY_NAMES: Record<string, string> = {
 
 export default function ReportPage() {
   const [activeTab, setActiveTab] = useState<"hours" | "weekdays">("hours");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [filterDates, setFilterDates] = useState<{ from?: string; to?: string }>({});
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["reports"],
-    queryFn: () => api.reports(),
+    queryKey: ["reports", filterDates.from, filterDates.to],
+    queryFn: () => api.reports(filterDates.from, filterDates.to),
   });
+
+  const applyDateFilter = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFilterDates({ from: dateFrom || undefined, to: dateTo || undefined });
+  };
+
+  const clearDateFilter = () => {
+    setDateFrom("");
+    setDateTo("");
+    setFilterDates({});
+  };
 
   const summary = data?.summary || { total: 0, by_status: {} };
   const occupancy = data?.occupancy || { overall_occupancy_rate: 0, items: [] };
@@ -72,21 +87,65 @@ export default function ReportPage() {
         title="Hiệu suất khai thác không gian"
         description="Số liệu thống kê thời gian thực từ hệ thống cơ sở dữ liệu VNU-IS."
       />
+
+      {/* BUG-028: Thanh bộ lọc thời gian */}
+      <form className="panel" onSubmit={applyDateFilter} style={{ marginBottom: 18, padding: "12px 18px" }}>
+        <div style={{ display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#475467", display: "block", marginBottom: 4 }}>
+              Từ ngày:
+            </label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d0d5dd", fontSize: 13 }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#475467", display: "block", marginBottom: 4 }}>
+              Đến ngày:
+            </label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d0d5dd", fontSize: 13 }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" className="button primary small">
+              Lọc ngày
+            </button>
+            {(filterDates.from || filterDates.to) && (
+              <button type="button" className="button secondary small" onClick={clearDateFilter}>
+                Xóa lọc
+              </button>
+            )}
+          </div>
+          {filterDates.from && filterDates.to && (
+            <span style={{ fontSize: 12, color: "#667085", alignSelf: "center" }}>
+              Đang lọc từ <strong>{filterDates.from}</strong> đến <strong>{filterDates.to}</strong>
+            </span>
+          )}
+        </div>
+      </form>
+
       {isLoading ? (
         <LoadingState />
       ) : isError ? (
         <ErrorState />
       ) : (
         <>
-          {/* KPI Summary Cards */}
-          <div className="metrics pro-metrics">
+          {/* BUG-002: Hiển thị chuẩn xác từng trạng thái đơn */}
+          <div className="metrics pro-metrics" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
             <div className="metric-card">
               <div className="metric-header">
                 <span>Tổng đơn đặt phòng</span>
-                <span className="badge-pill">Tất cả thời gian</span>
+                <span className="badge-pill">{filterDates.from ? "Khoảng lọc" : "Tất cả"}</span>
               </div>
               <strong className="metric-num">{summary.total}</strong>
-              <small className="metric-note">Bao gồm toàn bộ đơn phát sinh</small>
+              <small className="metric-note">Toàn bộ đơn phát sinh</small>
             </div>
             <div className="metric-card">
               <div className="metric-header">
@@ -110,13 +169,23 @@ export default function ReportPage() {
             </div>
             <div className="metric-card">
               <div className="metric-header">
-                <span>Từ chối / Hủy</span>
+                <span>Đã từ chối</span>
                 <StatusBadge status="rejected" />
               </div>
               <strong className="metric-num" style={{ color: "#991b1b" }}>
-                {(summary.by_status.rejected || 0) + (summary.by_status.cancelled || 0)}
+                {summary.by_status.rejected || 0}
               </strong>
-              <small className="metric-note">Không đáp ứng hoặc tự hủy</small>
+              <small className="metric-note">Hội đồng không phê duyệt</small>
+            </div>
+            <div className="metric-card">
+              <div className="metric-header">
+                <span>Đã hủy đơn</span>
+                <StatusBadge status="cancelled" />
+              </div>
+              <strong className="metric-num" style={{ color: "#64748b" }}>
+                {summary.by_status.cancelled || 0}
+              </strong>
+              <small className="metric-note">Người đặt hoặc bảo trì hủy</small>
             </div>
           </div>
 
@@ -224,7 +293,7 @@ export default function ReportPage() {
           <section className="panel table-panel">
             <div className="panel-heading" style={{ padding: "18px 20px 14px", borderBottom: "1px solid #e2e8f0" }}>
               <div>
-                <h2>Bảng xếp hạng hiệu suất từng phòng</h2>
+                <h2>Bảng xếp hạng hiệu suất từng phòng (Top 10 phòng cao nhất)</h2>
                 <p>Sắp xếp theo tỷ lệ lấp đầy và tổng thời lượng khai thác thực tế.</p>
               </div>
             </div>

@@ -219,10 +219,19 @@ def test_injured_user_safety(client):
 
     # Nhu cầu tạm thời của riêng đơn này cũng kích hoạt quy tắc an toàn
     temp = client.post("/api/bookings",
-                       json=payload(ids["R-A"], hour=15, temp_special_needs=["wheelchair"]),
+                       json=payload(ids["R-A"], hour=5, hours=2, temp_special_needs=["wheelchair"]),
                        headers=student)
     assert temp.status_code == 400
     assert "ACCESSIBILITY_REQUIRED" in temp.json()["details"]["reasons"]
+
+
+def test_outside_operating_hours_rejected(client):
+    ids = room_ids(client)
+    student = login(client, "student@roombook.test")
+    # Giờ đêm: 17:00 UTC = 00:00 VN
+    bad = client.post("/api/bookings", json=payload(ids["R-B"], hour=17, hours=2), headers=student)
+    assert bad.status_code == 400
+    assert bad.json()["code"] == "OUTSIDE_OPERATING_HOURS"
 
 
 def test_special_room_permission(client):

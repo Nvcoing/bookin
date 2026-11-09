@@ -86,7 +86,7 @@ export function LoginPage() {
 }
 
 export function RegisterPage() {
-  const [form, setForm] = useState({ name: "", code: "", email: "", password: "", injury: false });
+  const [form, setForm] = useState({ name: "", code: "", faculty: "CNTT", email: "", password: "", injury: false });
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -96,8 +96,9 @@ export function RegisterPage() {
     event.preventDefault();
     setError("");
     const trimmedEmail = form.email.trim().toLowerCase();
-    if (!form.name.trim() || !form.code.trim() || !trimmedEmail || form.password.length < 6) {
-      setError("Vui lòng nhập đầy đủ thông tin; mật khẩu tối thiểu 6 ký tự.");
+    // BUG-005: Đồng bộ yêu cầu mật khẩu tối thiểu 8 ký tự với Backend
+    if (!form.name.trim() || !form.code.trim() || !trimmedEmail || form.password.length < 8) {
+      setError("Vui lòng nhập đầy đủ thông tin; mật khẩu tối thiểu 8 ký tự.");
       return;
     }
 
@@ -112,6 +113,7 @@ export function RegisterPage() {
       await api.register({
         name: form.name.trim(),
         code: form.code.trim(),
+        faculty: form.faculty.trim(),
         email: trimmedEmail,
         password: form.password,
         special_needs: form.injury ? ["leg_injury"] : [],
@@ -154,6 +156,17 @@ export function RegisterPage() {
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
               />
             </Field>
+            <Field label="Khoa / Viện" required>
+              <select
+                value={form.faculty}
+                onChange={(e) => setForm({ ...form, faculty: e.target.value })}
+              >
+                <option value="CNTT">Khoa Công nghệ thông tin</option>
+                <option value="Điện tử">Khoa Điện tử & Viễn thông</option>
+                <option value="Kinh tế">Khoa Kinh tế & Quản trị</option>
+                <option value="Ngôn ngữ">Khoa Ngôn ngữ ứng dụng</option>
+              </select>
+            </Field>
             <Field label="Email trường (@vnu.edu.vn)" required>
               <input
                 type="email"
@@ -165,7 +178,7 @@ export function RegisterPage() {
             <Field label="Mật khẩu" required>
               <input
                 type="password"
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder="Tối thiểu 8 ký tự"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />

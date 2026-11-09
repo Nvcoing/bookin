@@ -27,6 +27,8 @@ def _suggestion(room: Room, start: datetime, end: datetime, score: int) -> dict:
         "room": {
             "id": room.id, "code": room.code, "name": room.name,
             "building": room.building, "floor": room.floor,
+            "has_elevator": room.has_elevator,
+            "facilities": room.facilities or [],
         },
         "start_time": start.astimezone(timezone.utc).isoformat(),
         "end_time": end.astimezone(timezone.utc).isoformat(),
@@ -81,7 +83,7 @@ def create_booking(db: Session, user, room_id: int, criteria: Criteria,
         db.execute(select(Room.id).where(Room.id == room.id).with_for_update())
 
         now = datetime.now(timezone.utc)
-        self_booking = find_user_overlapping_booking(db, user.id, room.id, criteria.start, criteria.end, now)
+        self_booking = find_user_overlapping_booking(db, user.id, criteria.start, criteria.end, now)
         if self_booking:
             db.rollback()
             status_text = "đang chờ duyệt" if self_booking.status == BookingStatus.pending else "đã được duyệt"

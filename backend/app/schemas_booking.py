@@ -14,6 +14,14 @@ class BookingRequest(BaseModel):
     required_facilities: list[Facility] = []
     temp_special_needs: list[SpecialNeed] = []
 
+    @field_validator("purpose")
+    @classmethod
+    def validate_purpose(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("Mục đích sử dụng không được để trống.")
+        return stripped
+
     model_config = ConfigDict(json_schema_extra={"example": {
         "start_time": "2026-11-10T08:00:00+07:00",
         "end_time": "2026-11-10T10:00:00+07:00",
@@ -46,6 +54,15 @@ class RoomBrief(BaseModel):
     building: str
     floor: int
     capacity: int
+    has_elevator: bool = False
+    facilities: list[str] = []
+
+
+class ExcludedRoom(BaseModel):
+    room_id: int
+    code: str
+    name: str
+    reasons: list[str]
 
 
 class ScoreBreakdown(BaseModel):
@@ -63,6 +80,7 @@ class RecommendationItem(BaseModel):
 
 class RecommendationsOut(BaseModel):
     recommendations: list[RecommendationItem]
+    excluded: list[ExcludedRoom] = []
     message: str | None = None
 
 

@@ -8,7 +8,7 @@ import type { Booking } from "../types";
 export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "all">(admin ? "pending" : "all");
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ["bookings", admin, tab],
     queryFn: () => api.bookings(admin, tab),
@@ -25,12 +25,37 @@ export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       setRejecting(null);
       setReason("");
+      setReasonError("");
       showToast(values.status === "approved" ? "Đã duyệt yêu cầu." : values.status === "cancelled" ? "Đã hủy đơn." : "Đã từ chối yêu cầu.");
     },
     onError: (err: any) => {
       showToast(err instanceof ApiError ? err.message : "Thao tác không thành công.", "danger");
     },
   });
+
+  const approve = (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn phê duyệt đơn đặt phòng này?")) {
+      mutation.mutate({ id, status: "approved" });
+    }
+  };
+
+  const cancel = (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn hủy đơn đặt phòng này?")) {
+      mutation.mutate({ id, status: "cancelled" });
+    }
+  };
+
+  const openReject = (id: string) => {
+    setRejecting(id);
+    setReason("");
+    setReasonError("");
+  };
+
+  const cancelReject = () => {
+    setRejecting(null);
+    setReason("");
+    setReasonError("");
+  };
 
   const reject = (id: string) => {
     if (!reason.trim()) {
@@ -49,54 +74,62 @@ export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
         title={admin ? "Phê duyệt yêu cầu" : "Lịch sử đặt phòng"}
         description={admin ? "Xử lý đơn theo thứ tự ưu tiên: Giảng viên trước, sau đó đến thứ tự nộp đơn." : "Theo dõi trạng thái và quản lý đơn đặt phòng của bạn."}
       />
-      {admin && (
-        <>
-          <div className="button-row" style={{ marginTop: 0, marginBottom: 16 }}>
-            <div className="tab-pill-group">
-              <button
-                type="button"
-                className={`tab-pill ${tab === "pending" ? "active" : ""}`}
-                onClick={() => setTab("pending")}
-              >
-                Chờ duyệt
-              </button>
-              <button
-                type="button"
-                className={`tab-pill ${tab === "approved" ? "active" : ""}`}
-                onClick={() => setTab("approved")}
-              >
-                Đã phê duyệt
-              </button>
-              <button
-                type="button"
-                className={`tab-pill ${tab === "rejected" ? "active" : ""}`}
-                onClick={() => setTab("rejected")}
-              >
-                Đã từ chối
-              </button>
-              <button
-                type="button"
-                className={`tab-pill ${tab === "all" ? "active" : ""}`}
-                onClick={() => setTab("all")}
-              >
-                Tất cả lịch sử
-              </button>
-            </div>
-          </div>
-          {tab === "pending" && (
-            <div className="queue-summary">
-              <div>
-                <span>Đang chờ xử lý</span>
-                <strong>{rows.length}</strong>
-              </div>
-              <div>
-                <span>Đơn ưu tiên</span>
-                <strong>{rows.filter((item) => item.requesterRole === "lecturer").length}</strong>
-              </div>
-              <p>Hệ thống tự động xếp đơn Giảng viên lên đầu hàng đợi.</p>
-            </div>
+      {/* BUG-001: Hiển thị bộ lọc trạng thái cho cả Admin và Sinh viên/Giảng viên */}
+      <div className="button-row" style={{ marginTop: 0, marginBottom: 16 }}>
+        <div className="tab-pill-group">
+          <button
+            type="button"
+            className={`tab-pill ${tab === (admin ? "pending" : "all") ? "active" : ""}`}
+            onClick={() => setTab(admin ? "pending" : "all")}
+          >
+            {admin ? "Chờ duyệt" : "Tất cả đơn"}
+          </button>
+          {!admin && (
+            <button
+              type="button"
+              className={`tab-pill ${tab === "pending" ? "active" : ""}`}
+              onClick={() => setTab("pending")}
+            >
+              Chờ duyệt
+            </button>
           )}
-        </>
+          <button
+            type="button"
+            className={`tab-pill ${tab === "approved" ? "active" : ""}`}
+            onClick={() => setTab("approved")}
+          >
+            Đã phê duyệt
+          </button>
+          <button
+            type="button"
+            className={`tab-pill ${tab === "rejected" ? "active" : ""}`}
+            onClick={() => setTab("rejected")}
+          >
+            Đã từ chối
+          </button>
+          {admin && (
+            <button
+              type="button"
+              className={`tab-pill ${tab === "all" ? "active" : ""}`}
+              onClick={() => setTab("all")}
+            >
+              Tất cả lịch sử
+            </button>
+          )}
+        </div>
+      </div>
+      {admin && tab === "pending" && (
+        <div className="queue-summary">
+          <div>
+            <span>Đang chờ xử lý</span>
+            <strong>{rows.length}</strong>
+          </div>
+          <div>
+            <span>Đơn ưu tiên</span>
+            <strong>{rows.filter((item) => item.requesterRole === "lecturer").length}</strong>
+          </div>
+          <p>Hệ thống tự động xếp đơn Giảng viên lên đầu hàng đợi.</p>
+        </div>
       )}
       <section className="panel table-panel">
         <div className="panel-heading">
@@ -184,10 +217,18 @@ export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
                       {admin ? (
                         item.status === "pending" ? (
                           <div className="table-actions">
-                            <button className="button small" onClick={() => mutation.mutate({ id: item.id, status: "approved" })}>
+                            <button
+                              className="button small"
+                              disabled={mutation.isPending}
+                              onClick={() => approve(item.id)}
+                            >
                               Duyệt
                             </button>
-                            <button className="button small danger-outline" onClick={() => setRejecting(item.id)}>
+                            <button
+                              className="button small danger-outline"
+                              disabled={mutation.isPending}
+                              onClick={() => openReject(item.id)}
+                            >
                               Từ chối
                             </button>
                           </div>
@@ -199,8 +240,8 @@ export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
                       ) : (
                         <button
                           className="button small danger-outline"
-                          disabled={item.status === "cancelled" || item.status === "rejected"}
-                          onClick={() => mutation.mutate({ id: item.id, status: "cancelled" })}
+                          disabled={item.status === "cancelled" || item.status === "rejected" || mutation.isPending}
+                          onClick={() => cancel(item.id)}
                         >
                           Hủy đơn
                         </button>
@@ -217,11 +258,15 @@ export default function ApprovalPage({ admin = false }: { admin?: boolean }) {
                           />
                           {reasonError && <small className="field-error">{reasonError}</small>}
                           <div>
-                            <button className="link-button" onClick={() => setRejecting(null)}>
+                            <button className="link-button" onClick={cancelReject}>
                               Bỏ qua
                             </button>
-                            <button className="button small danger-button" onClick={() => reject(item.id)}>
-                              Xác nhận
+                            <button
+                              className="button small danger-button"
+                              disabled={mutation.isPending}
+                              onClick={() => reject(item.id)}
+                            >
+                              {mutation.isPending ? "Đang xử lý..." : "Xác nhận"}
                             </button>
                           </div>
                         </div>

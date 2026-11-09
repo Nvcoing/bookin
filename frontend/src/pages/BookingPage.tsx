@@ -5,21 +5,30 @@ import { api, ApiError } from "../api/client";
 import { EmptyState, Field, PageHeader, useToast } from "../components/ui";
 import { useAuth } from "../hooks/useAuth";
 
-const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+function getTomorrowDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toLocaleDateString("en-CA");
+}
+
+function getTodayDate() {
+  return new Date().toLocaleDateString("en-CA");
+}
 
 export default function BookingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const todayStr = getTodayDate();
   const { data: rooms = [] } = useQuery({ queryKey: ["rooms"], queryFn: api.rooms });
   const [form, setForm] = useState({
-    date: tomorrow,
+    date: getTomorrowDate(),
     start: "08:00",
     end: "10:00",
     attendees: 18,
     purpose: "",
     room: params.get("room") || "auto",
-    projector: true,
+    projector: false,
     temporary: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -29,17 +38,24 @@ export default function BookingPage() {
   const [conflict, setConflict] = useState<any[] | null>(null);
   const { showToast, toastNode } = useToast();
 
-  const needsAccess = form.temporary || user?.special_needs?.includes("leg_injury") || false;
+  const needsAccess = form.temporary || user?.special_needs?.includes("leg_injury") || user?.special_needs?.includes("wheelchair") || false;
 
   const validate = () => {
     const next: Record<string, string> = {};
     if (!form.date) next.date = "Chọn ngày sử dụng.";
+    if (form.date < todayStr) next.date = "Không thể đặt phòng trong quá khứ.";
     if (form.start >= form.end) next.time = "Giờ kết thúc phải sau giờ bắt đầu.";
-    if (form.attendees < 1) next.attendees = "Số người phải lớn hơn 0.";
+    if (form.start < "07:00" || form.end > "21:00") {
+      next.time = "Thời gian đặt phòng phải trong khung giờ hoạt động 07:00 – 21:00.";
+    }
+    if (!Number.isInteger(form.attendees) || form.attendees < 1) next.attendees = "Số người phải là số nguyên lớn hơn 0.";
     if (!form.purpose.trim()) next.purpose = "Nhập mục đích sử dụng.";
     const selected = rooms.find((item) => item.id === form.room || item.code === form.room);
-    if (needsAccess && selected && selected.floor > 2 && !selected.has_elevator) {
+    if (needsAccess && selected && !(selected.floor <= 2 && selected.has_elevator)) {
       next.room = "Phòng không phù hợp điều kiện di chuyển. Vui lòng chọn tầng 1–2 có thang máy.";
+    }
+    if (form.projector && selected && !selected.facilities.includes("Máy chiếu")) {
+      next.room = `Phòng ${selected.code || selected.id} không có máy chiếu. Vui lòng chọn phòng khác hoặc bỏ yêu cầu máy chiếu.`;
     }
     setErrors(next);
     return !Object.keys(next).length;
@@ -68,17 +84,30 @@ export default function BookingPage() {
     setConflict(null);
 
     let targetRoom = rooms.find((r) => r.id === form.room || r.code === form.room);
+    // BUG-038: Nếu người dùng để "auto", tự động lấy phòng gợi ý điểm cao nhất thay vì báo lỗi
     if (!targetRoom && form.room === "auto") {
-      if (result && result.recommendations.length > 0) {
-        targetRoom = result.recommendations[0].room;
-      } else {
-        setErrors((prev) => ({ ...prev, room: "Vui lòng chọn phòng cụ thể hoặc bấm 'Gợi ý phòng'." }));
+      try {
+        setSubmitting(true);
+        const res = result || (await api.recommend(form.attendees, form.projector, needsAccess, form.date, form.start, form.end));
+        setResult(res);
+        if (res.recommendations.length > 0) {
+          targetRoom = res.recommendations[0].room;
+          setForm((prev) => ({ ...prev, room: targetRoom!.id }));
+        } else {
+          setErrors((prev) => ({ ...prev, room: "Không tìm thấy phòng phù hợp trong khung giờ này. Vui lòng chọn khung giờ khác." }));
+          setSubmitting(false);
+          return;
+        }
+      } catch (err: any) {
+        showToast(err instanceof ApiError ? err.message : "Không thể lấy gợi ý phòng.", "danger");
+        setSubmitting(false);
         return;
       }
     }
 
     if (!targetRoom || !targetRoom.rawId) {
       setErrors((prev) => ({ ...prev, room: "Không tìm thấy thông tin phòng." }));
+      setSubmitting(false);
       return;
     }
 
@@ -124,7 +153,12 @@ export default function BookingPage() {
         </div>
         <div className="form-grid three">
           <Field label="Ngày sử dụng" required error={errors.date}>
-            <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+            <input
+              type="date"
+              min={todayStr}
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+            />
           </Field>
           <Field label="Giờ bắt đầu" required error={errors.time}>
             <input type="time" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
@@ -139,11 +173,11 @@ export default function BookingPage() {
             <select value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })}>
               <option value="auto">Tự động gợi ý</option>
               {rooms.map((room) => {
-                const unsuitable = needsAccess && room.floor > 2 && !room.has_elevator;
+                const unsuitable = needsAccess && !(room.floor <= 2 && room.has_elevator);
                 return (
                   <option key={room.id} value={room.id} disabled={room.status === "maintenance"}>
                     {room.id} · {room.building} (Tầng {room.floor}, {room.capacity} chỗ)
-                    {unsuitable ? " ⚠️ (Tầng cao không thang máy)" : ""}
+                    {unsuitable ? " ⚠️ (Không phù hợp tiếp cận)" : ""}
                   </option>
                 );
               })}
@@ -260,9 +294,19 @@ export default function BookingPage() {
                         <strong>
                           {index + 1}. {item.room.id}
                         </strong>
-                        <small>
+                        <small style={{ display: "block", color: "var(--muted)", marginTop: 2 }}>
                           {item.room.building} · Tầng {item.room.floor} ({item.room.capacity} chỗ)
+                          {item.room.has_elevator ? " · Có thang máy" : ""}
                         </small>
+                        {item.room.facilities && item.room.facilities.length > 0 && (
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                            {item.room.facilities.map((fac) => (
+                              <span key={fac} style={{ fontSize: 11, background: "#f1f5f9", padding: "1px 6px", borderRadius: 4 }}>
+                                {fac}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td data-label="Sức khỏe">{item.health}</td>
                       <td data-label="Thiết bị">{item.equipment}</td>
@@ -287,6 +331,31 @@ export default function BookingPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {result.excluded && result.excluded.length > 0 && (
+            <div style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>
+                Phòng không đáp ứng điều kiện cứng ({result.excluded.length}):
+              </h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {result.excluded.map((exc, idx) => (
+                  <span
+                    key={idx}
+                    style={{
+                      fontSize: 12,
+                      padding: "4px 8px",
+                      background: "#fef2f2",
+                      color: "#991b1b",
+                      border: "1px solid #fecaca",
+                      borderRadius: 6,
+                    }}
+                  >
+                    <strong>{exc.room}</strong>: {exc.reason}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </section>

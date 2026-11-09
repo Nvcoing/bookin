@@ -58,14 +58,37 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     } catch {
       // not json response
     }
-    const message =
-      errorData.message ||
-      errorData.details?.errors?.[0]?.message ||
-      (response.status === 403
-        ? "Bạn không có quyền thực hiện thao tác này."
-        : response.status === 401
-        ? "Phiên đăng nhập đã hết hạn hoặc không hợp lệ."
-        : `Lỗi máy chủ (${response.status})`);
+
+    // BUG-009: Tự động xóa token và chuyển trang khi 401
+    if (response.status === 401) {
+      localStorage.removeItem("bookin_token");
+      if (typeof window !== "undefined" && !window.location.pathname.includes("/dang-nhap")) {
+        window.location.href = "/dang-nhap?session_expired=1";
+      }
+    }
+
+    // BUG-006: Hiển thị lỗi validation chi tiết từng trường nếu có
+    let message = "";
+    if (errorData.details?.errors?.length) {
+      message = errorData.details.errors
+        .map((e: any) => (e.field ? `${e.field}: ${e.message}` : e.message))
+        .join("; ");
+    } else if (errorData.details?.reasons?.length) {
+      message = errorData.message
+        ? `${errorData.message} (${errorData.details.reasons.join(", ")})`
+        : errorData.details.reasons.join(", ");
+    } else {
+      message = errorData.message;
+    }
+
+    if (!message) {
+      message =
+        response.status === 403
+          ? "Bạn không có quyền thực hiện thao tác này."
+          : response.status === 401
+          ? "Phiên đăng nhập đã hết hạn hoặc không hợp lệ."
+          : `Lỗi máy chủ (${response.status})`;
+    }
     throw new ApiError(response.status, message, errorData.code, errorData.details);
   }
 
@@ -87,7 +110,7 @@ export const api = {
       id: me.id,
       name: me.full_name,
       full_name: me.full_name,
-      code: me.faculty ? `${me.faculty}-${me.id}` : `SV${String(me.id).padStart(4, "0")}`,
+      code: me.student_code || (me.faculty ? `${me.faculty}-${me.id}` : `SV${String(me.id).padStart(4, "0")}`),
       email: me.email,
       role: me.role,
       faculty: me.faculty,
@@ -97,21 +120,22 @@ export const api = {
     return { token: authRes.access_token, user };
   },
 
-  async register(payload: { name: string; code?: string; email: string; password: string; special_needs?: string[] }): Promise<User> {
+  async register(payload: { name: string; code?: string; faculty?: string; email: string; password: string; special_needs?: string[] }): Promise<User> {
     const res = await request<any>("/auth/register", {
       method: "POST",
       body: JSON.stringify({
         email: payload.email,
         password: payload.password,
         full_name: payload.name,
-        faculty: "CNTT",
+        code: payload.code,
+        faculty: payload.faculty || "CNTT",
         special_needs: payload.special_needs || [],
       }),
     });
     return {
       id: res.id,
       name: res.full_name,
-      code: payload.code || `SV${String(res.id).padStart(4, "0")}`,
+      code: payload.code || res.student_code || `SV${String(res.id).padStart(4, "0")}`,
       email: res.email,
       role: res.role,
       faculty: res.faculty,
@@ -125,7 +149,7 @@ export const api = {
       id: me.id,
       name: me.full_name,
       full_name: me.full_name,
-      code: me.faculty ? `${me.faculty}-${me.id}` : `SV${String(me.id).padStart(4, "0")}`,
+      code: me.student_code || (me.faculty ? `${me.faculty}-${me.id}` : `SV${String(me.id).padStart(4, "0")}`),
       email: me.email,
       role: me.role,
       faculty: me.faculty,
@@ -134,11 +158,13 @@ export const api = {
     };
   },
 
-  async updateProfile(payload: { name?: string; special_needs?: string[] }): Promise<User> {
+  async updateProfile(payload: { name?: string; student_code?: string; faculty?: string; special_needs?: string[] }): Promise<User> {
     const res = await request<any>("/users/me", {
       method: "PATCH",
       body: JSON.stringify({
         full_name: payload.name,
+        student_code: payload.student_code,
+        faculty: payload.faculty,
         special_needs: payload.special_needs,
       }),
     });
@@ -146,7 +172,7 @@ export const api = {
       id: res.id,
       name: res.full_name,
       full_name: res.full_name,
-      code: res.faculty ? `${res.faculty}-${res.id}` : `SV${String(res.id).padStart(4, "0")}`,
+      code: res.student_code || (res.faculty ? `${res.faculty}-${res.id}` : `SV${String(res.id).padStart(4, "0")}`),
       email: res.email,
       role: res.role,
       faculty: res.faculty,
@@ -185,6 +211,8 @@ export const api = {
           has_elevator: room.has_elevator,
           capacity: room.capacity,
           facilities,
+          is_special: Boolean(room.is_special),
+          preferred_faculties: room.preferred_faculties || [],
         }),
       });
       if (res.status !== room.status) {
@@ -205,6 +233,8 @@ export const api = {
           has_elevator: room.has_elevator,
           capacity: room.capacity,
           facilities,
+          is_special: Boolean(room.is_special),
+          preferred_faculties: room.preferred_faculties || [],
           status: room.status,
         }),
       });
@@ -300,7 +330,7 @@ export const api = {
         name: item.room.name,
         building: item.room.building,
         floor: item.room.floor,
-        has_elevator: item.room.has_elevator ?? (item.room.floor <= 1),
+        has_elevator: Boolean(item.room.has_elevator),
         capacity: item.room.capacity || attendees,
         facilities: (item.room.facilities || []).map((f: string) => FACILITY_MAP[f] || f),
         status: "active",
@@ -312,9 +342,14 @@ export const api = {
       total: item.score,
     }));
 
+    const excluded = (res.excluded || []).map((e: any) => ({
+      room: e.code || `Phòng #${e.room_id}`,
+      reason: (e.reasons || []).join(", "),
+    }));
+
     return {
       recommendations,
-      excluded: [],
+      excluded,
     };
   },
 
@@ -346,8 +381,14 @@ export const api = {
 
   async reports(dateFrom?: string, dateTo?: string) {
     const params = new URLSearchParams();
-    if (dateFrom) params.set("date_from", dateFrom);
-    if (dateTo) params.set("date_to", dateTo);
+    if (dateFrom) {
+      params.set("from", dateFrom);
+      params.set("date_from", dateFrom);
+    }
+    if (dateTo) {
+      params.set("to", dateTo);
+      params.set("date_to", dateTo);
+    }
     const q = params.toString() ? `?${params.toString()}` : "";
     const [summary, occupancy, peak] = await Promise.all([
       request<ReportSummary>(`/reports/summary${q}`),
